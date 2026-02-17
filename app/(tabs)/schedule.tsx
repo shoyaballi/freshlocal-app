@@ -51,62 +51,64 @@ export default function ScheduleScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Schedule" subtitle="Plan your meals for the next 2 weeks" />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dateStrip}
-      >
-        {scheduleDays.map((day) => (
-          <Pressable
-            key={day.date}
-            onPress={() => setSelectedDate(day.date)}
-            style={[
-              styles.dateCard,
-              selectedDate === day.date && styles.dateCardActive,
-            ]}
-          >
-            <Text
+      <View style={styles.dateStripWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dateStrip}
+        >
+          {scheduleDays.map((day) => (
+            <Pressable
+              key={day.date}
+              onPress={() => setSelectedDate(day.date)}
               style={[
-                styles.dayName,
-                selectedDate === day.date && styles.dayNameActive,
+                styles.dateCard,
+                selectedDate === day.date && styles.dateCardActive,
               ]}
             >
-              {day.dayName}
-            </Text>
-            <Text
-              style={[
-                styles.dayNumber,
-                selectedDate === day.date && styles.dayNumberActive,
-              ]}
-            >
-              {day.dayNumber}
-            </Text>
-            {day.hasMeals && (
-              <View
+              <Text
                 style={[
-                  styles.mealDot,
-                  selectedDate === day.date && styles.mealDotActive,
+                  styles.dayName,
+                  selectedDate === day.date && styles.dayNameActive,
                 ]}
-              />
-            )}
-          </Pressable>
-        ))}
-      </ScrollView>
+              >
+                {day.dayName}
+              </Text>
+              <Text
+                style={[
+                  styles.dayNumber,
+                  selectedDate === day.date && styles.dayNumberActive,
+                ]}
+              >
+                {day.dayNumber}
+              </Text>
+              {day.hasMeals && (
+                <View
+                  style={[
+                    styles.mealDot,
+                    selectedDate === day.date && styles.mealDotActive,
+                  ]}
+                />
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      <Text style={styles.dateHeader}>
+        {selectedDay?.isToday
+          ? 'Today'
+          : new Date(selectedDate).toLocaleDateString('en-GB', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+      </Text>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.dateHeader}>
-          {selectedDay?.isToday
-            ? 'Today'
-            : new Date(selectedDate).toLocaleDateString('en-GB', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-        </Text>
-
         {selectedDayMeals.length > 0 ? (
           <MealGrid
             meals={selectedDayMeals}
@@ -132,14 +134,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  dateStripWrapper: {
+    height: 100,
+  },
   dateStrip: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   dateCard: {
-    width: 56,
-    height: 72,
+    width: 52,
+    height: 68,
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
@@ -153,16 +160,16 @@ const styles = StyleSheet.create({
   },
   dayName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: fontSizes.xs,
+    fontSize: 11,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   dayNameActive: {
     color: colors.accentLight,
   },
   dayNumber: {
     fontFamily: fonts.bodyBold,
-    fontSize: fontSizes.lg,
+    fontSize: 17,
     color: colors.textPrimary,
   },
   dayNumberActive: {
@@ -173,26 +180,29 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: colors.accent,
-    marginTop: spacing.xs,
+    marginTop: 4,
+    position: 'absolute',
+    bottom: 8,
   },
   mealDotActive: {
     backgroundColor: colors.accentLight,
   },
   content: {
     paddingBottom: spacing['4xl'],
+    flexGrow: 1,
   },
   dateHeader: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.xl,
     color: colors.textPrimary,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
   },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing['4xl'],
+    paddingVertical: spacing['4xl'],
+    paddingHorizontal: spacing.lg,
   },
   emptyEmoji: {
     fontSize: 48,

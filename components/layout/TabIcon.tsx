@@ -36,12 +36,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: spacing.xs,
+    minWidth: 64,
   },
   iconContainer: {
     position: 'relative',
   },
   emoji: {
-    fontSize: 22,
+    fontSize: 20,
     opacity: 0.6,
   },
   emojiActive: {
@@ -49,9 +50,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
+    fontSize: 10,
     color: colors.grey400,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   labelActive: {
     fontFamily: fonts.bodyMedium,
