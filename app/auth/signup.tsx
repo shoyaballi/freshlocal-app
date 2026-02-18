@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,7 +20,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { signUp, isLoading } = useAuth();
+  const { signUp, isLoading, getPostAuthRedirect } = useAuth();
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -47,12 +48,26 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     if (!validate()) return;
 
-    const { error } = await signUp(email, password, { name });
+    const { data, error } = await signUp(email, password, { name });
 
     if (error) {
-      setErrors({ email: 'An account with this email already exists' });
+      const errorMessage = (error as Error).message || 'An error occurred';
+      if (errorMessage.toLowerCase().includes('already registered')) {
+        setErrors({ email: 'An account with this email already exists' });
+      } else {
+        setErrors({ email: errorMessage });
+      }
+    } else if (data?.user && !data?.session) {
+      // Email confirmation required
+      Alert.alert(
+        'Check your email',
+        'We sent you a confirmation link. Please check your email to complete signup.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
     } else {
-      router.replace('/(tabs)');
+      // Redirect based on onboarding status
+      const redirectPath = getPostAuthRedirect();
+      router.replace(redirectPath as any);
     }
   };
 

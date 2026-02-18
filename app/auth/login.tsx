@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { signInWithEmail, signInWithPhone, isLoading } = useAuth();
+  const { signInWithEmail, signInWithPhone, isLoading, getPostAuthRedirect } = useAuth();
 
   const handlePhoneLogin = async () => {
     if (!phone) {
@@ -30,13 +30,16 @@ export default function LoginScreen() {
       return;
     }
 
+    // Ensure phone has country code
+    const formattedPhone = phone.startsWith('+') ? phone : `+44${phone.replace(/^0/, '')}`;
+
     setError('');
-    const { error: signInError } = await signInWithPhone(phone);
+    const { error: signInError } = await signInWithPhone(formattedPhone);
 
     if (signInError) {
       setError('Failed to send OTP. Please try again.');
     } else {
-      router.push({ pathname: '/auth/verify', params: { phone } });
+      router.push({ pathname: '/auth/verify', params: { phone: formattedPhone } });
     }
   };
 
@@ -52,7 +55,9 @@ export default function LoginScreen() {
     if (signInError) {
       setError('Invalid email or password');
     } else {
-      router.replace('/(tabs)');
+      // Redirect based on onboarding status
+      const redirectPath = getPostAuthRedirect();
+      router.replace(redirectPath as any);
     }
   };
 

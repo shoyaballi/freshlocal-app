@@ -17,7 +17,7 @@ export default function VerifyScreen() {
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const { verifyOtp, signInWithPhone, isLoading } = useAuth();
+  const { verifyOtp, signInWithPhone, isLoading, getPostAuthRedirect } = useAuth();
 
   useEffect(() => {
     if (countdown > 0) {
@@ -40,7 +40,9 @@ export default function VerifyScreen() {
     if (verifyError) {
       setError('Invalid code. Please try again.');
     } else {
-      router.replace('/(tabs)');
+      // Redirect based on onboarding status
+      const redirectPath = getPostAuthRedirect();
+      router.replace(redirectPath as any);
     }
   };
 
@@ -50,8 +52,13 @@ export default function VerifyScreen() {
     setCanResend(false);
     setCountdown(60);
     setError('');
+    setCode('');
 
-    await signInWithPhone(phone);
+    const { error: resendError } = await signInWithPhone(phone);
+    if (resendError) {
+      setError('Failed to resend code. Please try again.');
+      setCanResend(true);
+    }
   };
 
   const formatPhone = (phoneNumber: string) => {

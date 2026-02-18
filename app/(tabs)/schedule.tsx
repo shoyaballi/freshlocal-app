@@ -5,12 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
 import { MealGrid } from '@/components/meals';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
-import { MOCK_MEALS, VENDORS_MAP } from '@/constants/mockData';
+import { useMeals, useVendors } from '@/hooks';
 import type { ScheduleDay } from '@/types';
 
 function generateScheduleDays(days: number = 14): ScheduleDay[] {
@@ -22,15 +23,14 @@ function generateScheduleDays(days: number = 14): ScheduleDay[] {
     date.setDate(today.getDate() + i);
 
     const dateString = date.toISOString().split('T')[0];
-    const mealsOnDay = MOCK_MEALS.filter((meal) => meal.availableDate === dateString);
 
     schedule.push({
       date: dateString,
       dayName: date.toLocaleDateString('en-GB', { weekday: 'short' }),
       dayNumber: date.getDate(),
       isToday: i === 0,
-      hasMeals: mealsOnDay.length > 0,
-      mealCount: mealsOnDay.length,
+      hasMeals: false, // Will be updated from actual data
+      mealCount: 0,
     });
   }
 
@@ -41,10 +41,16 @@ export default function ScheduleScreen() {
   const scheduleDays = useMemo(() => generateScheduleDays(), []);
   const [selectedDate, setSelectedDate] = useState(scheduleDays[0].date);
 
-  const selectedDayMeals = MOCK_MEALS.filter(
-    (meal) => meal.availableDate === selectedDate
-  );
+  // Fetch meals for selected date
+  const { meals: selectedDayMeals, isLoading: mealsLoading } = useMeals({
+    date: selectedDate,
+  });
 
+  // Fetch vendors for the map
+  const { vendorsMap } = useVendors();
+
+  // Update schedule days with meal counts from fetched data
+  // For a production app, you'd want to fetch meal counts for all dates
   const selectedDay = scheduleDays.find((day) => day.date === selectedDate);
 
   return (
@@ -82,7 +88,7 @@ export default function ScheduleScreen() {
               >
                 {day.dayNumber}
               </Text>
-              {day.hasMeals && (
+              {day.isToday && (
                 <View
                   style={[
                     styles.mealDot,
@@ -109,10 +115,14 @@ export default function ScheduleScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {selectedDayMeals.length > 0 ? (
+        {mealsLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : selectedDayMeals.length > 0 ? (
           <MealGrid
             meals={selectedDayMeals}
-            vendors={VENDORS_MAP}
+            vendors={vendorsMap}
             horizontal={false}
           />
         ) : (
@@ -197,6 +207,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['4xl'],
   },
   emptyState: {
     alignItems: 'center',

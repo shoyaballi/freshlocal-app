@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -13,9 +14,10 @@ import { SearchInput } from '@/components/ui';
 import { MealGrid } from '@/components/meals';
 import { VendorCardCompact } from '@/components/vendors';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
-import { MOCK_MEALS, MOCK_VENDORS, VENDORS_MAP, DIETARY_FILTERS } from '@/constants/mockData';
+import { DIETARY_FILTERS } from '@/constants/mockData';
 import { useAppStore } from '@/stores/appStore';
-import type { DietaryBadge } from '@/types';
+import { useMeals, useVendors } from '@/hooks';
+import type { DietaryBadge, Meal, Vendor } from '@/types';
 
 export default function TodayScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,29 +27,43 @@ export default function TodayScreen() {
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-  const todayMeals = MOCK_MEALS.filter((meal) => {
-    const matchesDate = meal.availableDate === today;
-    const matchesSearch =
-      searchQuery === '' ||
-      meal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meal.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      activeFilter === 'all' || meal.dietary.includes(activeFilter as DietaryBadge);
-
-    return matchesDate && matchesSearch && matchesFilter;
+  // Fetch meals for today
+  const dietaryFilter = activeFilter === 'all' ? undefined : [activeFilter as DietaryBadge];
+  const { meals: todayMealsRaw, isLoading: mealsLoading } = useMeals({
+    date: today,
+    dietary: dietaryFilter,
   });
 
-  const tomorrowMeals = MOCK_MEALS.filter((meal) => meal.availableDate === tomorrow).slice(0, 4);
+  // Fetch meals for tomorrow
+  const { meals: tomorrowMealsRaw } = useMeals({ date: tomorrow });
 
-  const handleMealPress = (meal: typeof MOCK_MEALS[0]) => {
+  // Fetch vendors
+  const { vendors, vendorsMap, isLoading: vendorsLoading } = useVendors();
+
+  // Filter meals by search query
+  const todayMeals = useMemo(() => {
+    if (!searchQuery) return todayMealsRaw;
+    const query = searchQuery.toLowerCase();
+    return todayMealsRaw.filter(
+      (meal) =>
+        meal.name.toLowerCase().includes(query) ||
+        meal.description.toLowerCase().includes(query)
+    );
+  }, [todayMealsRaw, searchQuery]);
+
+  const tomorrowMeals = tomorrowMealsRaw.slice(0, 4);
+
+  const handleMealPress = (meal: Meal) => {
     // TODO: Navigate to meal detail
     console.log('Meal pressed:', meal.name);
   };
 
-  const handleVendorPress = (vendor: typeof MOCK_VENDORS[0]) => {
+  const handleVendorPress = (vendor: Vendor) => {
     // TODO: Navigate to vendor profile
     console.log('Vendor pressed:', vendor.businessName);
   };
+
+  const isLoading = mealsLoading || vendorsLoading;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -96,49 +112,61 @@ export default function TodayScreen() {
           ))}
         </ScrollView>
 
-        <MealGrid
-          title="Available Now"
-          meals={todayMeals}
-          vendors={VENDORS_MAP}
-          onMealPress={handleMealPress}
-          horizontal
-          emptyMessage="No meals available with current filters"
-        />
-
-        {tomorrowMeals.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Tomorrow</Text>
-              <Pressable onPress={() => router.push('/schedule')}>
-                <Text style={styles.seeAllText}>See all →</Text>
-              </Pressable>
-            </View>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading meals...</Text>
+          </View>
+        ) : (
+          <>
             <MealGrid
-              meals={tomorrowMeals}
-              vendors={VENDORS_MAP}
+              title="Available Now"
+              meals={todayMeals}
+              vendors={vendorsMap}
               onMealPress={handleMealPress}
               horizontal
+              emptyMessage="No meals available with current filters"
             />
-          </View>
-        )}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Local Vendors</Text>
-            <Pressable onPress={() => router.push('/vendors')}>
-              <Text style={styles.seeAllText}>See all →</Text>
-            </Pressable>
-          </View>
-          <View style={styles.vendorList}>
-            {MOCK_VENDORS.slice(0, 3).map((vendor) => (
-              <VendorCardCompact
-                key={vendor.id}
-                vendor={vendor}
-                onPress={() => handleVendorPress(vendor)}
-              />
-            ))}
-          </View>
-        </View>
+            {tomorrowMeals.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Tomorrow</Text>
+                  <Pressable onPress={() => router.push('/schedule')}>
+                    <Text style={styles.seeAllText}>See all</Text>
+                  </Pressable>
+                </View>
+                <MealGrid
+                  meals={tomorrowMeals}
+                  vendors={vendorsMap}
+                  onMealPress={handleMealPress}
+                  horizontal
+                />
+              </View>
+            )}
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Local Vendors</Text>
+                <Pressable onPress={() => router.push('/vendors')}>
+                  <Text style={styles.seeAllText}>See all</Text>
+                </Pressable>
+              </View>
+              <View style={styles.vendorList}>
+                {vendors.slice(0, 3).map((vendor) => (
+                  <VendorCardCompact
+                    key={vendor.id}
+                    vendor={vendor}
+                    onPress={() => handleVendorPress(vendor)}
+                  />
+                ))}
+                {vendors.length === 0 && (
+                  <Text style={styles.emptyText}>No vendors available yet</Text>
+                )}
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -204,5 +232,24 @@ const styles = StyleSheet.create({
   vendorList: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['4xl'],
+  },
+  loadingText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.md,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: spacing.xl,
   },
 });

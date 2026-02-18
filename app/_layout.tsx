@@ -14,9 +14,49 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '@/constants/theme';
+import { ProtectedRoute } from '@/components/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+function RootLayoutNav() {
+  // Initialize auth - this sets up the auth listener
+  useAuth();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="auth"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="onboarding"
+        options={{
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="vendor"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -40,36 +80,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="auth"
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }}
-        />
-        <Stack.Screen
-          name="onboarding"
-          options={{
-            presentation: 'fullScreenModal',
-            animation: 'fade',
-          }}
-        />
-        <Stack.Screen
-          name="vendor"
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }}
-        />
-      </Stack>
+      <ProtectedRoute>
+        <RootLayoutNav />
+      </ProtectedRoute>
     </GestureHandlerRootView>
   );
 }
