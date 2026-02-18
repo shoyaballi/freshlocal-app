@@ -10,9 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
 import { MealGrid } from '@/components/meals';
+import { OrderBottomSheet } from '@/components/order-flow';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useMeals, useVendors } from '@/hooks';
-import type { ScheduleDay } from '@/types';
+import type { ScheduleDay, Meal } from '@/types';
 
 function generateScheduleDays(days: number = 14): ScheduleDay[] {
   const schedule: ScheduleDay[] = [];
@@ -40,6 +41,8 @@ function generateScheduleDays(days: number = 14): ScheduleDay[] {
 export default function ScheduleScreen() {
   const scheduleDays = useMemo(() => generateScheduleDays(), []);
   const [selectedDate, setSelectedDate] = useState(scheduleDays[0].date);
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [isOrderSheetVisible, setIsOrderSheetVisible] = useState(false);
 
   // Fetch meals for selected date
   const { meals: selectedDayMeals, isLoading: mealsLoading } = useMeals({
@@ -52,6 +55,19 @@ export default function ScheduleScreen() {
   // Update schedule days with meal counts from fetched data
   // For a production app, you'd want to fetch meal counts for all dates
   const selectedDay = scheduleDays.find((day) => day.date === selectedDate);
+
+  const handleMealPress = (meal: Meal) => {
+    setSelectedMeal(meal);
+    setIsOrderSheetVisible(true);
+  };
+
+  const handleCloseOrderSheet = () => {
+    setIsOrderSheetVisible(false);
+    setSelectedMeal(null);
+  };
+
+  // Get the vendor for the selected meal
+  const selectedVendor = selectedMeal ? vendorsMap[selectedMeal.vendorId] : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -123,6 +139,7 @@ export default function ScheduleScreen() {
           <MealGrid
             meals={selectedDayMeals}
             vendors={vendorsMap}
+            onMealPress={handleMealPress}
             horizontal={false}
           />
         ) : (
@@ -135,6 +152,13 @@ export default function ScheduleScreen() {
           </View>
         )}
       </ScrollView>
+
+      <OrderBottomSheet
+        isVisible={isOrderSheetVisible}
+        onClose={handleCloseOrderSheet}
+        meal={selectedMeal}
+        vendor={selectedVendor || null}
+      />
     </SafeAreaView>
   );
 }

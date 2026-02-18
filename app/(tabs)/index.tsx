@@ -13,6 +13,7 @@ import { LocationHeader } from '@/components/layout';
 import { SearchInput } from '@/components/ui';
 import { MealGrid } from '@/components/meals';
 import { VendorCardCompact } from '@/components/vendors';
+import { OrderBottomSheet } from '@/components/order-flow';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { DIETARY_FILTERS } from '@/constants/mockData';
 import { useAppStore } from '@/stores/appStore';
@@ -22,6 +23,8 @@ import type { DietaryBadge, Meal, Vendor } from '@/types';
 export default function TodayScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | DietaryBadge>('all');
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [isOrderSheetVisible, setIsOrderSheetVisible] = useState(false);
   const { postcode } = useAppStore();
 
   const today = new Date().toISOString().split('T')[0];
@@ -54,9 +57,17 @@ export default function TodayScreen() {
   const tomorrowMeals = tomorrowMealsRaw.slice(0, 4);
 
   const handleMealPress = (meal: Meal) => {
-    // TODO: Navigate to meal detail
-    console.log('Meal pressed:', meal.name);
+    setSelectedMeal(meal);
+    setIsOrderSheetVisible(true);
   };
+
+  const handleCloseOrderSheet = () => {
+    setIsOrderSheetVisible(false);
+    setSelectedMeal(null);
+  };
+
+  // Get the vendor for the selected meal
+  const selectedVendor = selectedMeal ? vendorsMap[selectedMeal.vendorId] : null;
 
   const handleVendorPress = (vendor: Vendor) => {
     // TODO: Navigate to vendor profile
@@ -168,6 +179,13 @@ export default function TodayScreen() {
           </>
         )}
       </ScrollView>
+
+      <OrderBottomSheet
+        isVisible={isOrderSheetVisible}
+        onClose={handleCloseOrderSheet}
+        meal={selectedMeal}
+        vendor={selectedVendor || null}
+      />
     </SafeAreaView>
   );
 }
