@@ -6,12 +6,16 @@ import {
   StyleSheet,
   Pressable,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button, Input, Card, Badge } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useAppStore } from '@/stores/appStore';
+import { useAuth, useStripeConnect } from '@/hooks';
+import { supabase } from '@/lib/supabase';
 import type { BusinessType, FoodTag } from '@/types';
 
 const BUSINESS_TYPES: { value: BusinessType; label: string; emoji: string }[] = [
@@ -34,7 +38,10 @@ const FOOD_TAGS: { value: FoodTag; label: string }[] = [
 
 export default function VendorSignupScreen() {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { setIsVendor } = useAppStore();
+  const { user } = useAuth();
+  const { createConnectAccount, openOnboarding, isLoading: stripeLoading, error: stripeError } = useStripeConnect();
 
   // Step 1 fields
   const [businessName, setBusinessName] = useState('');
@@ -110,11 +117,73 @@ export default function VendorSignupScreen() {
     }
   };
 
-  const handleSubmit = () => {
-    if (validateStep2()) {
-      // TODO: Submit to backend
+  const handleSubmit = async () => {
+    if (!validateStep2()) return;
+    if (!user) {
+      Alert.alert('Error', 'Please sign in first');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // 1. Create vendor in database
+      const { data: vendor, error: vendorError } = await supabase
+        .from('vendors')
+        .insert({
+          user_id: user.id,
+          business_name: businessName.trim(),
+          handle: handle.trim().toLowerCase(),
+          description: description.trim(),
+          business_type: businessType,
+          food_tags: selectedTags,
+          phone: phone.trim(),
+          postcode: postcode.trim().toUpperCase(),
+          is_active: false, // Will be activated after Stripe onboarding
+        })
+        .select()
+        .single();
+
+      if (vendorError) {
+        throw new Error(vendorError.message);
+      }
+
+      // 2. Update profile to mark as vendor
+      await supabase
+        .from('profiles')
+        .update({ is_vendor: true })
+        .eq('id', user.id);
+
       setIsVendor(true);
-      router.replace('/dashboard');
+
+      // 3. Create Stripe Connect account
+      const accountId = await createConnectAccount(
+        vendor.id,
+        businessName.trim(),
+        user.email
+      );
+
+      if (!accountId) {
+        // Stripe account creation failed, but vendor is created
+        // They can complete Stripe setup later
+        Alert.alert(
+          'Almost done!',
+          'Your vendor account is created. Please complete payment setup from your dashboard.',
+          [{ text: 'OK', onPress: () => router.replace('/dashboard') }]
+        );
+        return;
+      }
+
+      // 4. Open Stripe onboarding
+      await openOnboarding(vendor.id);
+
+      // 5. Navigate to onboarding status screen
+      router.replace('/vendor/onboarding-status');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create vendor account';
+      Alert.alert('Error', message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -280,11 +349,24 @@ export default function VendorSignupScreen() {
       {errors.terms && <Text style={styles.errorText}>{errors.terms}</Text>}
 
       <View style={styles.buttonRow}>
-        <Button variant="outline" onPress={() => setStep(1)} style={styles.backBtn}>
+        <Button
+          variant="outline"
+          onPress={() => setStep(1)}
+          style={styles.backBtn}
+          disabled={isSubmitting}
+        >
           Back
         </Button>
-        <Button onPress={handleSubmit} style={styles.submitBtn}>
-          Start Selling
+        <Button
+          onPress={handleSubmit}
+          style={styles.submitBtn}
+          disabled={isSubmitting || stripeLoading}
+        >
+          {isSubmitting || stripeLoading ? (
+            <ActivityIndicator color={colors.backgroundWhite} size="small" />
+          ) : (
+            'Start Selling'
+          )}
         </Button>
       </View>
     </>

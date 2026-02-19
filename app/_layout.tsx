@@ -13,9 +13,12 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { colors } from '@/constants/theme';
 import { ProtectedRoute } from '@/components/auth';
 import { useAuth } from '@/hooks/useAuth';
+
+const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -79,10 +82,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style="dark" />
-      <ProtectedRoute>
-        <RootLayoutNav />
-      </ProtectedRoute>
+      <StripeProvider
+        publishableKey={stripePublishableKey}
+        merchantIdentifier="merchant.com.freshlocal.app"
+      >
+        <StatusBar style="dark" />
+        <ProtectedRoute>
+          <RootLayoutNav />
+        </ProtectedRoute>
+      </StripeProvider>
     </GestureHandlerRootView>
   );
 }

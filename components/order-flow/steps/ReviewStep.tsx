@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Input } from '@/components/ui';
 import { PriceBreakdown } from '../components';
 import { useOrderFlow } from '../OrderFlowContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateOrder } from '@/hooks';
+import { useCreateOrder, useStripePayment } from '@/hooks';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 
 export function ReviewStep() {
   const { state, computed, dispatch } = useOrderFlow();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { createOrder, isLoading: isCreatingOrder } = useCreateOrder();
+  const { initializePayment, presentPaymentSheet, isLoading: isPaymentLoading } = useStripePayment();
+  const [paymentStep, setPaymentStep] = useState<'idle' | 'creating' | 'paying'>('idle');
 
   const {
     meal,
@@ -43,7 +45,7 @@ export function ReviewStep() {
 
   const handlePayment = async () => {
     // Check authentication
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       Alert.alert(
         'Sign in required',
         'Please sign in to complete your order.',
@@ -59,8 +61,10 @@ export function ReviewStep() {
     }
 
     dispatch({ type: 'SUBMIT_START' });
+    setPaymentStep('creating');
 
     try {
+      // 1. Create order in 'pending' status
       const order = await createOrder({
         vendorId: vendor.id,
         items: [
@@ -85,10 +89,36 @@ export function ReviewStep() {
         notes: notes || undefined,
       });
 
+      setPaymentStep('paying');
+
+      // 2. Initialize Payment Sheet
+      const paymentInitialized = await initializePayment(order.id, user.id);
+
+      if (!paymentInitialized) {
+        throw new Error('Failed to initialize payment');
+      }
+
+      // 3. Present Payment Sheet
+      const { success, error: paymentError } = await presentPaymentSheet();
+
+      if (!success) {
+        if (paymentError === 'Payment cancelled') {
+          // User cancelled - keep order pending, they can retry
+          dispatch({ type: 'SUBMIT_ERROR', payload: 'Payment cancelled. Your order is saved.' });
+          setPaymentStep('idle');
+          return;
+        }
+        throw new Error(paymentError || 'Payment failed');
+      }
+
+      // 4. Payment successful - webhook will confirm order
+      // Show success immediately (optimistic)
       dispatch({ type: 'SUBMIT_SUCCESS', payload: order });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create order';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to complete payment';
       dispatch({ type: 'SUBMIT_ERROR', payload: errorMessage });
+    } finally {
+      setPaymentStep('idle');
     }
   };
 
@@ -180,15 +210,19 @@ export function ReviewStep() {
       {/* Payment Button */}
       <Button
         onPress={handlePayment}
-        loading={isSubmitting || isCreatingOrder}
+        loading={isSubmitting || isCreatingOrder || isPaymentLoading}
         fullWidth
         style={styles.payButton}
       >
-        Pay £{total.toFixed(2)}
+        {paymentStep === 'creating'
+          ? 'Creating order...'
+          : paymentStep === 'paying'
+          ? 'Opening payment...'
+          : `Pay £${total.toFixed(2)}`}
       </Button>
 
       <Text style={styles.paymentNote}>
-        Payment processing coming soon. Orders are confirmed immediately.
+        Payments are processed securely by Stripe.
       </Text>
     </ScrollView>
   );

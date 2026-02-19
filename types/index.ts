@@ -40,6 +40,11 @@ export interface Vendor {
   reviewCount: number;
   isVerified: boolean;
   isActive: boolean;
+  // Stripe Connect fields
+  stripeAccountId?: string;
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
+  stripeOnboardingComplete?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +87,8 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled';
 
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
 export interface OrderItem {
   id: string;
   orderId: string;
@@ -98,6 +105,8 @@ export interface Order {
   userId: string;
   vendorId: string;
   status: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  stripePaymentIntentId?: string;
   fulfilmentType: FulfilmentType;
   items: OrderItem[];
   subtotal: number;
@@ -205,4 +214,19 @@ export interface VendorSignupForm {
   phone: string;
   postcode: string;
   acceptedTerms: boolean;
+}
+
+// Stripe Connect status
+export interface StripeConnectStatus {
+  stripeAccountId: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  onboardingComplete: boolean;
+}
+
+// Stripe Payment Sheet parameters
+export interface PaymentSheetParams {
+  paymentIntent: string;
+  ephemeralKey: string;
+  customer: string;
 }
