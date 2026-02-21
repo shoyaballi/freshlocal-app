@@ -83,6 +83,7 @@ export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
         name: meal.name,
         description: meal.description,
         emoji: meal.emoji,
+        imageUrl: meal.image_url,
         price: meal.price / 100, // Convert pence to pounds
         originalPrice: meal.original_price ? meal.original_price / 100 : undefined,
         dietary: meal.dietary,

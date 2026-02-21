@@ -60,6 +60,7 @@ export interface Meal {
   name: string;
   description: string;
   emoji: string;
+  imageUrl?: string;
   price: number;
   originalPrice?: number;
   dietary: DietaryBadge[];
@@ -229,4 +230,24 @@ export interface PaymentSheetParams {
   paymentIntent: string;
   ephemeralKey: string;
   customer: string;
+}
+
+// Order status update for real-time tracking
+export interface OrderStatusUpdate {
+  orderId: string;
+  previousStatus: OrderStatus;
+  newStatus: OrderStatus;
+  timestamp: string;
+  vendorName?: string;
+}
+
+// Notification payload for push notifications
+export interface NotificationPayload {
+  title: string;
+  body: string;
+  data?: {
+    type: 'order_update' | 'promo' | 'system';
+    orderId?: string;
+    screen?: string;
+  };
 }

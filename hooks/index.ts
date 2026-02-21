@@ -6,5 +6,7 @@ export { useVendorOrders } from './useVendorOrders';
 export { useCreateOrder } from './useCreateOrder';
 export { useAddresses } from './useAddresses';
 export { useVendorOrderSubscription } from './useVendorOrderSubscription';
+export { useOrderSubscription } from './useOrderSubscription';
+export { useNotifications } from './useNotifications';
 export { useStripeConnect } from './useStripeConnect';
 export { useStripePayment } from './useStripePayment';

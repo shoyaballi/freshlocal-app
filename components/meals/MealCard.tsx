@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Card, DietaryBadge, SpiceBadge } from '@/components/ui';
+import { Card, DietaryBadge, SpiceBadge, OptimizedImage } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import type { Meal } from '@/types';
 
@@ -23,8 +23,13 @@ export function MealCard({ meal, onPress, showVendor = true, vendorName }: MealC
 
   return (
     <Card style={styles.card} onPress={onPress} noPadding>
-      <View style={styles.emojiContainer}>
-        <Text style={styles.emoji}>{meal.emoji}</Text>
+      <View style={styles.imageContainer}>
+        <OptimizedImage
+          uri={meal.imageUrl}
+          fallbackEmoji={meal.emoji}
+          size="card"
+          borderRadiusSize="none"
+        />
         {isSoldOut && (
           <View style={styles.soldOutOverlay}>
             <Text style={styles.soldOutText}>Sold Out</Text>
@@ -80,7 +85,14 @@ interface MealCardCompactProps {
 export function MealCardCompact({ meal, onPress }: MealCardCompactProps) {
   return (
     <Pressable onPress={onPress} style={styles.compactCard}>
-      <Text style={styles.compactEmoji}>{meal.emoji}</Text>
+      <View style={styles.compactImageContainer}>
+        <OptimizedImage
+          uri={meal.imageUrl}
+          fallbackEmoji={meal.emoji}
+          size="thumbnail"
+          borderRadiusSize="sm"
+        />
+      </View>
       <View style={styles.compactContent}>
         <Text style={styles.compactName} numberOfLines={1}>
           {meal.name}
@@ -96,15 +108,9 @@ const styles = StyleSheet.create({
     width: 180,
     overflow: 'hidden',
   },
-  emojiContainer: {
+  imageContainer: {
     height: 100,
-    backgroundColor: colors.accentPale,
-    alignItems: 'center',
-    justifyContent: 'center',
     position: 'relative',
-  },
-  emoji: {
-    fontSize: 48,
   },
   soldOutOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -189,8 +195,11 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     gap: spacing.sm,
   },
-  compactEmoji: {
-    fontSize: 28,
+  compactImageContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.sm,
+    overflow: 'hidden',
   },
   compactContent: {
     flex: 1,

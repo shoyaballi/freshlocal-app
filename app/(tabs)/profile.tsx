@@ -12,6 +12,7 @@ import { Card, Button } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useAppStore } from '@/stores/appStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrders } from '@/hooks/useOrders';
 
 interface MenuItemProps {
   emoji: string;
@@ -57,6 +58,19 @@ function MenuItem({
 export default function ProfileScreen() {
   const { user, isAuthenticated, signOut } = useAuth();
   const { isVendor, notificationCount, favourites } = useAppStore();
+  const { orders } = useOrders();
+
+  // Find active orders (not collected, delivered, or cancelled)
+  const activeOrders = orders.filter(
+    (order) => !['collected', 'delivered', 'cancelled'].includes(order.status)
+  );
+  const mostRecentActiveOrder = activeOrders[0];
+
+  const handleTrackOrder = () => {
+    if (mostRecentActiveOrder) {
+      router.push(`/order/${mostRecentActiveOrder.id}`);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -143,11 +157,14 @@ export default function ProfileScreen() {
             subtitle="View order history"
             onPress={() => console.log('My Orders')}
           />
-          <MenuItem
-            emoji="📍"
-            title="Track Active Order"
-            onPress={() => console.log('Track Order')}
-          />
+          {mostRecentActiveOrder && (
+            <MenuItem
+              emoji="📍"
+              title="Track Active Order"
+              subtitle={`#${mostRecentActiveOrder.id.slice(0, 8).toUpperCase()}`}
+              onPress={handleTrackOrder}
+            />
+          )}
           <MenuItem
             emoji="🔔"
             title="Notifications"

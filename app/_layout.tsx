@@ -17,6 +17,7 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 import { colors } from '@/constants/theme';
 import { ProtectedRoute } from '@/components/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
@@ -26,6 +27,8 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   // Initialize auth - this sets up the auth listener
   useAuth();
+  // Initialize notifications
+  useNotifications();
 
   return (
     <Stack
@@ -55,6 +58,13 @@ function RootLayoutNav() {
         options={{
           presentation: 'modal',
           animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="order/[id]"
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
         }}
       />
     </Stack>

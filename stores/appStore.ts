@@ -15,6 +15,7 @@ interface AppState {
   favourites: string[];
   dietaryFilters: DietaryBadge[];
   notificationCount: number;
+  pushToken: string | null;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -30,6 +31,7 @@ interface AppState {
   toggleDietaryFilter: (filter: DietaryBadge) => void;
   setNotificationCount: (count: number) => void;
   clearNotifications: () => void;
+  setPushToken: (token: string | null) => void;
   reset: () => void;
 }
 
@@ -43,6 +45,7 @@ const initialState = {
   favourites: [],
   dietaryFilters: [],
   notificationCount: 0,
+  pushToken: null,
 };
 
 // Simple in-memory storage fallback for when AsyncStorage isn't available
@@ -105,6 +108,7 @@ export const useAppStore = create<AppState>()(
 
       setNotificationCount: (count) => set({ notificationCount: count }),
       clearNotifications: () => set({ notificationCount: 0 }),
+      setPushToken: (token) => set({ pushToken: token }),
 
       reset: () => set(initialState),
     }),

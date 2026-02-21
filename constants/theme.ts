@@ -3,6 +3,7 @@ export const colors = {
   primary: '#3d4a2a',
   primaryDark: '#2b3520',
   primaryLight: '#5a6b42',
+  primaryPale: '#e8ebe4',
 
   // Background
   background: '#faf7f2',
@@ -71,6 +72,7 @@ export const spacing = {
 } as const;
 
 export const borderRadius = {
+  none: 0,
   sm: 8,
   md: 12,
   lg: 14,

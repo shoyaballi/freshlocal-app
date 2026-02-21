@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
 import { Card, Button, StatusBadge } from '@/components/ui';
 import { MealCardCompact } from '@/components/meals';
+import { AddMealSheet } from '@/components/vendor';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useVendorOrders, useMeals, useVendorOrderSubscription } from '@/hooks';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +25,7 @@ export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('orders');
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [vendorId, setVendorId] = useState<string | null>(null);
+  const [isAddMealOpen, setIsAddMealOpen] = useState(false);
   const { user } = useAuth();
 
   // Fetch vendor info for the current user
@@ -67,8 +69,7 @@ export default function DashboardScreen() {
   const { orders, isLoading: ordersLoading, refetch, updateOrderStatus } = useVendorOrders();
 
   // Fetch vendor meals
-  const today = new Date().toISOString().split('T')[0];
-  const { meals: vendorMeals, isLoading: mealsLoading } = useMeals({
+  const { meals: vendorMeals, isLoading: mealsLoading, refetch: refetchMeals } = useMeals({
     vendorId: vendorId || undefined,
   });
 
@@ -222,7 +223,7 @@ export default function DashboardScreen() {
     >
       <View style={styles.menuHeader}>
         <Text style={styles.sectionTitle}>Your Meals</Text>
-        <Button size="sm" variant="outline" onPress={() => console.log('Add meal')}>
+        <Button size="sm" variant="outline" onPress={() => setIsAddMealOpen(true)}>
           + Add Meal
         </Button>
       </View>
@@ -238,7 +239,7 @@ export default function DashboardScreen() {
           <Text style={styles.emptyText}>
             Add your first meal to start receiving orders.
           </Text>
-          <Button onPress={() => console.log('Add meal')} style={styles.addButton}>
+          <Button onPress={() => setIsAddMealOpen(true)} style={styles.addButton}>
             Add Your First Meal
           </Button>
         </Card>
@@ -353,6 +354,16 @@ export default function DashboardScreen() {
       {activeTab === 'orders' && renderOrders()}
       {activeTab === 'menu' && renderMenu()}
       {activeTab === 'earnings' && renderEarnings()}
+
+      {/* Add Meal Sheet */}
+      {vendorId && (
+        <AddMealSheet
+          isOpen={isAddMealOpen}
+          onClose={() => setIsAddMealOpen(false)}
+          vendorId={vendorId}
+          onMealAdded={refetchMeals}
+        />
+      )}
     </SafeAreaView>
   );
 }

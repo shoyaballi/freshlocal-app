@@ -25,6 +25,11 @@ export function ConfirmationStep({ onClose }: ConfirmationStepProps) {
     });
   };
 
+  const handleTrackOrder = () => {
+    onClose();
+    router.push(`/order/${createdOrder.id}`);
+  };
+
   const handleViewOrders = () => {
     onClose();
     router.push('/(tabs)/profile');
@@ -76,18 +81,22 @@ export function ConfirmationStep({ onClose }: ConfirmationStepProps) {
       <View style={styles.noteContainer}>
         <Text style={styles.noteText}>
           {fulfilmentType === 'collection'
-            ? `Show this code when you collect your order from ${vendor.businessName}`
-            : `The vendor will contact you when your order is on its way`}
+            ? `Show this code when you collect your order from ${vendor.businessName}. Track your order for live updates!`
+            : `Track your order for live updates when it's on its way!`}
         </Text>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
+        <Button onPress={handleTrackOrder} fullWidth>
+          Track Order
+        </Button>
+
         <Button onPress={handleViewOrders} fullWidth variant="outline">
           View My Orders
         </Button>
 
-        <Button onPress={onClose} fullWidth style={styles.doneButton}>
+        <Button onPress={onClose} fullWidth variant="ghost" style={styles.doneButton}>
           Done
         </Button>
       </View>

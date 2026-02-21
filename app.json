@@ -39,6 +39,14 @@
           "merchantIdentifier": "merchant.com.freshlocal.app",
           "enableGooglePay": true
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3d4a2a",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
