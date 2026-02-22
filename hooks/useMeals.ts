@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Meal, Vendor, DietaryBadge } from '@/types';
 
@@ -20,15 +20,22 @@ interface UseMealsResult {
 }
 
 export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
-  const { date, dietary, vendorId } = options;
+  const { date, vendorId } = options;
+  // Stabilize dietary array by serializing — prevents infinite re-fetch loop
+  const dietaryKey = options.dietary ? options.dietary.sort().join(',') : '';
   const [meals, setMeals] = useState<MealWithVendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasFetchedOnce = useRef(false);
 
   const fetchMeals = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Only show full loading on initial fetch, not on filter changes
+      if (!hasFetchedOnce.current) {
+        setIsLoading(true);
+      }
       setError(null);
+      const dietary = dietaryKey ? dietaryKey.split(',') as DietaryBadge[] : undefined;
 
       let query = supabase
         .from('meals')
@@ -124,8 +131,9 @@ export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
       setError(err instanceof Error ? err : new Error('Failed to fetch meals'));
     } finally {
       setIsLoading(false);
+      hasFetchedOnce.current = true;
     }
-  }, [date, dietary, vendorId]);
+  }, [date, dietaryKey, vendorId]);
 
   useEffect(() => {
     fetchMeals();
