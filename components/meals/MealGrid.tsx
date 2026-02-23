@@ -61,6 +61,7 @@ export function MealGrid({
               meal={meal}
               vendorName={vendors[meal.vendorId]?.businessName}
               onPress={() => onMealPress?.(meal)}
+              fullWidth
             />
           </View>
         ))}

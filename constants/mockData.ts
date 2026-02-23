@@ -360,6 +360,8 @@ export const DIETARY_FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'halal', label: '☪ Halal' },
   { key: 'vegetarian', label: '🌿 Vegetarian' },
+  { key: 'vegan', label: '🌱 Vegan' },
+  { key: 'gluten_free', label: '🌾 Gluten Free' },
 ] as const;
 
 export const ONBOARDING_SCREENS = [
