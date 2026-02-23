@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,24 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { BottomSheet, Button, Input, ImagePickerButton } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { imageService, ImagePickerResult } from '@/services/imageService';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import type { DietaryBadge, SpiceLevel, FulfilmentType } from '@/types';
+import type { DietaryBadge, SpiceLevel, FulfilmentType, Meal } from '@/types';
 
 interface AddMealSheetProps {
   isOpen: boolean;
   onClose: () => void;
   vendorId: string;
   onMealAdded: () => void;
+  /** Pass a meal to enter edit mode */
+  meal?: Meal | null;
+  /** Called after successful delete */
+  onMealDeleted?: () => void;
 }
 
 interface MealForm {
@@ -54,28 +59,55 @@ const FULFILMENT_OPTIONS: { value: FulfilmentType; label: string }[] = [
   { value: 'both', label: '📍🚗 Both' },
 ];
 
+const INITIAL_FORM: MealForm = {
+  name: '',
+  description: '',
+  emoji: '🍽️',
+  price: '',
+  stock: '10',
+  prepTime: '30',
+  dietary: ['halal'],
+  spiceLevel: 1,
+  fulfilmentType: 'collection',
+};
+
 export function AddMealSheet({
   isOpen,
   onClose,
   vendorId,
   onMealAdded,
+  meal,
+  onMealDeleted,
 }: AddMealSheetProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImagePickerResult | null>(null);
   const [imagePreviewUri, setImagePreviewUri] = useState<string | null>(null);
+  const [form, setForm] = useState<MealForm>(INITIAL_FORM);
 
-  const [form, setForm] = useState<MealForm>({
-    name: '',
-    description: '',
-    emoji: '🍽️',
-    price: '',
-    stock: '10',
-    prepTime: '30',
-    dietary: ['halal'],
-    spiceLevel: 1,
-    fulfilmentType: 'collection',
-  });
+  const isEditMode = !!meal;
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (meal && isOpen) {
+      setForm({
+        name: meal.name,
+        description: meal.description,
+        emoji: meal.emoji,
+        price: meal.price.toFixed(2),
+        stock: String(meal.stock),
+        prepTime: String(meal.prepTime),
+        dietary: [...meal.dietary],
+        spiceLevel: meal.spiceLevel,
+        fulfilmentType: meal.fulfilmentType,
+      });
+      setImagePreviewUri(meal.imageUrl || null);
+      setSelectedImage(null);
+    } else if (!meal && isOpen) {
+      resetForm();
+    }
+  }, [meal, isOpen]);
 
   const handleImageSelected = useCallback((image: ImagePickerResult) => {
     setSelectedImage(image);
@@ -92,7 +124,6 @@ export function AddMealSheet({
   };
 
   const handleSubmit = async () => {
-    // Validation
     if (!form.name.trim()) {
       Alert.alert('Error', 'Please enter a meal name');
       return;
@@ -109,9 +140,9 @@ export function AddMealSheet({
     setIsSubmitting(true);
 
     try {
-      let imageUrl: string | null = null;
+      let imageUrl: string | null = isEditMode ? (meal.imageUrl || null) : null;
 
-      // Upload image if selected
+      // Upload image if a new one was selected
       if (selectedImage && user) {
         const uploadResult = await imageService.uploadImage(
           selectedImage,
@@ -120,13 +151,7 @@ export function AddMealSheet({
         imageUrl = uploadResult.url;
       }
 
-      // Get tomorrow's date as default available date
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const availableDate = tomorrow.toISOString().split('T')[0];
-
-      // Insert meal into database
-      const { error } = await supabase.from('meals').insert({
+      const mealData = {
         vendor_id: vendorId,
         name: form.name.trim(),
         description: form.description.trim(),
@@ -139,38 +164,84 @@ export function AddMealSheet({
         max_stock: parseInt(form.stock) || 10,
         fulfilment_type: form.fulfilmentType,
         prep_time: parseInt(form.prepTime) || 30,
-        available_date: availableDate,
         is_active: true,
-      });
+      };
 
-      if (error) {
-        throw error;
+      if (isEditMode) {
+        // Update existing meal
+        const { error } = await supabase
+          .from('meals')
+          .update(mealData)
+          .eq('id', meal.id);
+
+        if (error) throw error;
+        Alert.alert('Success', 'Meal updated successfully!');
+      } else {
+        // Get tomorrow's date as default available date
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const availableDate = tomorrow.toISOString().split('T')[0];
+
+        const { error } = await supabase.from('meals').insert({
+          ...mealData,
+          available_date: availableDate,
+        });
+
+        if (error) throw error;
+        Alert.alert('Success', 'Meal added successfully!');
       }
 
-      Alert.alert('Success', 'Meal added successfully!');
       onMealAdded();
       resetForm();
       onClose();
     } catch (error) {
-      console.error('Error adding meal:', error);
-      Alert.alert('Error', 'Failed to add meal. Please try again.');
+      console.error('Error saving meal:', error);
+      Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'add'} meal. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleDelete = () => {
+    if (!meal) return;
+
+    Alert.alert(
+      'Delete Meal',
+      `Are you sure you want to delete "${meal.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              const { error } = await supabase
+                .from('meals')
+                .delete()
+                .eq('id', meal.id);
+
+              if (error) throw error;
+
+              Alert.alert('Deleted', 'Meal has been removed.');
+              onMealDeleted?.();
+              onMealAdded();
+              resetForm();
+              onClose();
+            } catch (error) {
+              console.error('Error deleting meal:', error);
+              Alert.alert('Error', 'Failed to delete meal. It may have existing orders.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const resetForm = () => {
-    setForm({
-      name: '',
-      description: '',
-      emoji: '🍽️',
-      price: '',
-      stock: '10',
-      prepTime: '30',
-      dietary: ['halal'],
-      spiceLevel: 1,
-      fulfilmentType: 'collection',
-    });
+    setForm(INITIAL_FORM);
     setSelectedImage(null);
     setImagePreviewUri(null);
   };
@@ -192,7 +263,9 @@ export function AddMealSheet({
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <Text style={styles.sheetTitle}>Add New Meal</Text>
+          <Text style={styles.sheetTitle}>
+            {isEditMode ? 'Edit Meal' : 'Add New Meal'}
+          </Text>
 
           {/* Image Picker */}
           <View style={styles.section}>
@@ -319,11 +392,29 @@ export function AddMealSheet({
           <View style={styles.submitSection}>
             <Button
               onPress={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isDeleting}
               fullWidth
             >
-              {isSubmitting ? 'Adding Meal...' : 'Add Meal'}
+              {isSubmitting
+                ? (isEditMode ? 'Saving...' : 'Adding Meal...')
+                : (isEditMode ? 'Save Changes' : 'Add Meal')
+              }
             </Button>
+
+            {isEditMode && (
+              <Pressable
+                onPress={handleDelete}
+                disabled={isDeleting || isSubmitting}
+                style={styles.deleteButton}
+              >
+                <Text style={[
+                  styles.deleteText,
+                  (isDeleting || isSubmitting) && styles.deleteTextDisabled,
+                ]}>
+                  {isDeleting ? 'Deleting...' : 'Delete Meal'}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -386,6 +477,19 @@ const styles = StyleSheet.create({
   },
   submitSection: {
     marginTop: spacing.lg,
+    gap: spacing.lg,
+    alignItems: 'center',
+  },
+  deleteButton: {
+    paddingVertical: spacing.md,
+  },
+  deleteText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.md,
+    color: colors.error,
+  },
+  deleteTextDisabled: {
+    opacity: 0.5,
   },
 });
 

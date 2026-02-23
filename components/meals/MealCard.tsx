@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { Card, DietaryBadge, SpiceBadge, OptimizedImage } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import type { Meal } from '@/types';
@@ -9,9 +9,10 @@ interface MealCardProps {
   onPress?: () => void;
   showVendor?: boolean;
   vendorName?: string;
+  fullWidth?: boolean;
 }
 
-export function MealCard({ meal, onPress, showVendor = true, vendorName }: MealCardProps) {
+export function MealCard({ meal, onPress, showVendor = true, vendorName, fullWidth }: MealCardProps) {
   const fulfilmentLabel = meal.fulfilmentType === 'collection'
     ? '📍 Collection'
     : meal.fulfilmentType === 'delivery'
@@ -22,7 +23,7 @@ export function MealCard({ meal, onPress, showVendor = true, vendorName }: MealC
   const isSoldOut = meal.stock === 0;
 
   return (
-    <Card style={styles.card} onPress={onPress} noPadding>
+    <Card style={fullWidth ? { ...styles.card, width: '100%' } as ViewStyle : styles.card} onPress={onPress} noPadding>
       <View style={styles.imageContainer}>
         <OptimizedImage
           uri={meal.imageUrl}

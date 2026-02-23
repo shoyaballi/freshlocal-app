@@ -17,7 +17,7 @@ import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/the
 import { useVendorOrders, useMeals, useVendorOrderSubscription } from '@/hooks';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import type { Order, Vendor } from '@/types';
+import type { Order, Vendor, Meal } from '@/types';
 
 type DashboardTab = 'orders' | 'menu' | 'earnings';
 
@@ -26,6 +26,7 @@ export default function DashboardScreen() {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const { user } = useAuth();
 
   // Fetch vendor info for the current user
@@ -246,8 +247,11 @@ export default function DashboardScreen() {
       ) : (
         vendorMeals.map((meal) => (
           <View key={meal.id} style={styles.menuItem}>
-            <MealCardCompact meal={meal} onPress={() => console.log('Edit meal')} />
-            <View style={styles.menuItemMeta}>
+            <MealCardCompact meal={meal} onPress={() => {
+              setEditingMeal(meal);
+              setIsAddMealOpen(true);
+            }} />
+            <View style={styles.menuItemActions}>
               <Text style={[
                 styles.menuItemStock,
                 meal.stock <= 3 && meal.stock > 0 && styles.menuItemStockLow,
@@ -255,6 +259,17 @@ export default function DashboardScreen() {
               ]}>
                 {meal.stock === 0 ? 'Sold out' : `${meal.stock}/${meal.maxStock} left`}
               </Text>
+              <View style={styles.menuItemButtons}>
+                <Pressable
+                  onPress={() => {
+                    setEditingMeal(meal);
+                    setIsAddMealOpen(true);
+                  }}
+                  style={styles.menuActionButton}
+                >
+                  <Text style={styles.menuActionEdit}>Edit</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         ))
@@ -355,13 +370,18 @@ export default function DashboardScreen() {
       {activeTab === 'menu' && renderMenu()}
       {activeTab === 'earnings' && renderEarnings()}
 
-      {/* Add Meal Sheet */}
+      {/* Add/Edit Meal Sheet */}
       {vendorId && (
         <AddMealSheet
           isOpen={isAddMealOpen}
-          onClose={() => setIsAddMealOpen(false)}
+          onClose={() => {
+            setIsAddMealOpen(false);
+            setEditingMeal(null);
+          }}
           vendorId={vendorId}
           onMealAdded={refetchMeals}
+          meal={editingMeal}
+          onMealDeleted={refetchMeals}
         />
       )}
     </SafeAreaView>
@@ -470,9 +490,25 @@ const styles = StyleSheet.create({
   menuItem: {
     marginBottom: spacing.sm,
   },
-  menuItemMeta: {
+  menuItemActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingLeft: spacing['3xl'],
     marginTop: spacing.xs,
+  },
+  menuItemButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  menuActionButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  menuActionEdit: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.primary,
   },
   menuItemStock: {
     fontFamily: fonts.body,
