@@ -1,24 +1,38 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
 import { Header } from '@/components/layout';
-import { SearchInput } from '@/components/ui';
+import { SearchInput, ErrorState, VendorListSkeleton } from '@/components/ui';
 import { VendorCard } from '@/components/vendors';
 import { colors, fonts, fontSizes, spacing } from '@/constants/theme';
-import { useVendors } from '@/hooks';
+import { useVendors, useFavourites } from '@/hooks';
 import type { Vendor } from '@/types';
 
 export default function VendorsScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch vendors
-  const { vendors, isLoading, error } = useVendors();
+  const { vendors, isLoading, error, refetch } = useVendors();
+  const { isFavourite, toggleFavourite } = useFavourites();
+
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   // Filter vendors by search query locally for instant feedback
   const filteredVendors = useMemo(() => {
@@ -39,8 +53,7 @@ export default function VendorsScreen() {
   };
 
   const handleVendorPress = (vendor: Vendor) => {
-    // TODO: Navigate to vendor profile
-    console.log('Vendor pressed:', vendor.businessName);
+    router.push(`/vendor/${vendor.id}` as any);
   };
 
   return (
@@ -57,22 +70,25 @@ export default function VendorsScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading vendors...</Text>
-          </View>
+          <VendorListSkeleton count={3} />
         ) : error ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>⚠️</Text>
-            <Text style={styles.emptyTitle}>Something went wrong</Text>
-            <Text style={styles.emptyText}>
-              Unable to load vendors. Please try again later.
-            </Text>
-          </View>
+          <ErrorState
+            title="Couldn't load vendors"
+            message="Check your connection and try again."
+            onRetry={handleRefresh}
+          />
         ) : (
           <>
             <Text style={styles.resultsText}>
@@ -86,6 +102,8 @@ export default function VendorsScreen() {
                 onPress={() => handleVendorPress(vendor)}
                 distance={getVendorDistance(vendor.id)}
                 upcomingMeals={0} // TODO: Fetch upcoming meal count
+                isFavourite={isFavourite(vendor.id)}
+                onFavouriteToggle={toggleFavourite}
               />
             ))}
 

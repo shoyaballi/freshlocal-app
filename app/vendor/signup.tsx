@@ -8,6 +8,10 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -374,6 +378,11 @@ export default function VendorSignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -398,6 +407,8 @@ export default function VendorSignupScreen() {
           {step === 1 ? renderStep1() : renderStep2()}
         </View>
       </ScrollView>
+      </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

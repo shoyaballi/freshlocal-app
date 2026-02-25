@@ -8,6 +8,7 @@ interface PriceBreakdownProps {
   subtotal: number;
   serviceFee: number;
   deliveryFee: number;
+  discountAmount?: number;
   total: number;
 }
 
@@ -17,6 +18,7 @@ export function PriceBreakdown({
   subtotal,
   serviceFee,
   deliveryFee,
+  discountAmount,
   total,
 }: PriceBreakdownProps) {
   return (
@@ -44,6 +46,13 @@ export function PriceBreakdown({
         <View style={styles.row}>
           <Text style={styles.feeLabel}>Delivery Fee</Text>
           <Text style={styles.feeValue}>£{deliveryFee.toFixed(2)}</Text>
+        </View>
+      )}
+
+      {discountAmount !== undefined && discountAmount > 0 && (
+        <View style={styles.row}>
+          <Text style={styles.discountLabel}>Promo Discount</Text>
+          <Text style={styles.discountValue}>-£{discountAmount.toFixed(2)}</Text>
         </View>
       )}
 
@@ -103,6 +112,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: fontSizes.xl,
     color: colors.primary,
+  },
+  discountLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.success,
+  },
+  discountValue: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.success,
   },
 });
 

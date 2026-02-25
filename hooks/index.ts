@@ -10,3 +10,6 @@ export { useOrderSubscription } from './useOrderSubscription';
 export { useNotifications } from './useNotifications';
 export { useStripeConnect } from './useStripeConnect';
 export { useStripePayment } from './useStripePayment';
+export { useReviews } from './useReviews';
+export { useFavourites } from './useFavourites';
+export { usePromoCodes } from './usePromoCodes';

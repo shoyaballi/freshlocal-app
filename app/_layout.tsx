@@ -67,6 +67,27 @@ function RootLayoutNav() {
           animation: 'slide_from_right',
         }}
       />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="admin"
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="legal"
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }

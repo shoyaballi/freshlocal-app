@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Linking,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -14,6 +15,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Card, Button } from '@/components/ui';
 import { AnimatedTimeline } from '@/components/orders/AnimatedTimeline';
 import { useOrderSubscription } from '@/hooks/useOrderSubscription';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts, fontSizes, spacing, borderRadius, shadows } from '@/constants/theme';
 import type { OrderStatus } from '@/types';
 
@@ -31,7 +33,40 @@ export default function OrderTrackingScreen() {
     showNotifications: true,
   });
 
-  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelOrder = useCallback(() => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order? This cannot be undone.',
+      [
+        { text: 'Keep Order', style: 'cancel' },
+        {
+          text: 'Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsCancelling(true);
+              const { error: cancelError } = await supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('id', id)
+                .eq('status', 'pending');
+
+              if (cancelError) {
+                Alert.alert('Error', 'Failed to cancel order. Please try again.');
+              }
+            } catch {
+              Alert.alert('Error', 'Something went wrong. Please try again.');
+            } finally {
+              setIsCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [id]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -254,6 +289,21 @@ export default function OrderTrackingScreen() {
             </Card>
           </Animated.View>
         )}
+
+        {/* Cancel Order Button - only for pending orders */}
+        {order.status === 'pending' && (
+          <Animated.View entering={FadeInDown.delay(500)}>
+            <Button
+              variant="outline"
+              onPress={handleCancelOrder}
+              loading={isCancelling}
+              style={styles.cancelButton}
+              textStyle={styles.cancelButtonText}
+            >
+              Cancel Order
+            </Button>
+          </Animated.View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -466,5 +516,12 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  cancelButton: {
+    marginTop: spacing.xl,
+    borderColor: colors.error,
+  },
+  cancelButtonText: {
+    color: colors.error,
   },
 });

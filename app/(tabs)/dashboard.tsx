@@ -5,14 +5,15 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
-import { Card, Button, StatusBadge } from '@/components/ui';
+import { Card, Button, StatusBadge, ErrorState, OrderListSkeleton, MealGridSkeleton } from '@/components/ui';
 import { MealCardCompact } from '@/components/meals';
 import { AddMealSheet } from '@/components/vendor';
+import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useVendorOrders, useMeals, useVendorOrderSubscription } from '@/hooks';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,12 +68,29 @@ export default function DashboardScreen() {
   }, [user]);
 
   // Fetch vendor orders
-  const { orders, isLoading: ordersLoading, refetch, updateOrderStatus } = useVendorOrders();
+  const { orders, isLoading: ordersLoading, error: ordersError, refetch, updateOrderStatus } = useVendorOrders();
 
   // Fetch vendor meals
-  const { meals: vendorMeals, isLoading: mealsLoading, refetch: refetchMeals } = useMeals({
+  const { meals: vendorMeals, isLoading: mealsLoading, error: mealsError, refetch: refetchMeals } = useMeals({
     vendorId: vendorId || undefined,
   });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshOrders = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+  const handleRefreshMeals = useCallback(async () => {
+    setRefreshing(true);
+    await refetchMeals();
+    setRefreshing(false);
+  }, [refetchMeals]);
+  const handleRefreshEarnings = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   // Real-time subscription for new orders
   const handleNewOrder = useCallback((newOrder: Order) => {
@@ -116,10 +134,54 @@ export default function DashboardScreen() {
     return orders.filter((order) => new Date(order.createdAt) >= weekAgo);
   }, [orders]);
 
+  // Best sellers from weekly orders
+  const bestSellers = useMemo(() => {
+    const counts: Record<string, number> = {};
+    weeklyOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        counts[item.mealName] = (counts[item.mealName] || 0) + item.quantity;
+      });
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [weeklyOrders]);
+
+  // Peak order times
+  const peakTimes = useMemo(() => {
+    const hourCounts: Record<number, number> = {};
+    weeklyOrders.forEach((order) => {
+      const hour = new Date(order.createdAt).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    const maxCount = Math.max(...Object.values(hourCounts), 1);
+    return Object.entries(hourCounts)
+      .map(([h, count]) => ({
+        hour: `${String(h).padStart(2, '0')}:00`,
+        count,
+        pct: Math.round((count / maxCount) * 100),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [weeklyOrders]);
+
+  // Customer insights
+  const { uniqueCustomers, repeatCustomers } = useMemo(() => {
+    const customerCounts: Record<string, number> = {};
+    weeklyOrders.forEach((order) => {
+      customerCounts[order.userId] = (customerCounts[order.userId] || 0) + 1;
+    });
+    const unique = Object.keys(customerCounts).length;
+    const repeat = Object.values(customerCounts).filter((c) => c > 1).length;
+    return { uniqueCustomers: unique, repeatCustomers: repeat };
+  }, [weeklyOrders]);
+
   const weeklyGross = weeklyOrders.reduce((sum, order) => sum + order.total, 0);
   const weeklyNet = weeklyGross - (weeklyGross * 0.12) - (weeklyGross > 0 ? (weeklyGross * 0.014) + 0.20 : 0);
 
   const handleMarkReady = async (orderId: string) => {
+    haptic.medium();
     const success = await updateOrderStatus(orderId, 'ready');
     if (!success) {
       Alert.alert('Error', 'Failed to update order status');
@@ -130,13 +192,16 @@ export default function DashboardScreen() {
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.tabContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefreshOrders} tintColor={colors.primary} />
+      }
     >
       <Text style={styles.sectionTitle}>Live Orders</Text>
 
       {ordersLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <OrderListSkeleton count={3} />
+      ) : ordersError ? (
+        <ErrorState title="Couldn't load orders" message="Pull down to retry." onRetry={handleRefreshOrders} />
       ) : orders.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyEmoji}>📦</Text>
@@ -221,6 +286,9 @@ export default function DashboardScreen() {
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.tabContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefreshMeals} tintColor={colors.primary} />
+      }
     >
       <View style={styles.menuHeader}>
         <Text style={styles.sectionTitle}>Your Meals</Text>
@@ -230,9 +298,9 @@ export default function DashboardScreen() {
       </View>
 
       {mealsLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <MealGridSkeleton count={4} />
+      ) : mealsError ? (
+        <ErrorState title="Couldn't load meals" message="Pull down to retry." onRetry={handleRefreshMeals} />
       ) : vendorMeals.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyEmoji}>🍽️</Text>
@@ -281,6 +349,9 @@ export default function DashboardScreen() {
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.tabContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefreshEarnings} tintColor={colors.primary} />
+      }
     >
       <Text style={styles.sectionTitle}>Today's Breakdown</Text>
 
@@ -313,11 +384,6 @@ export default function DashboardScreen() {
       <Text style={styles.sectionTitle}>This Week</Text>
 
       <Card style={styles.chartCard}>
-        <View style={styles.chartPlaceholder}>
-          <Text style={styles.chartPlaceholderText}>📊</Text>
-          <Text style={styles.chartPlaceholderLabel}>Weekly earnings chart</Text>
-        </View>
-
         <View style={styles.weeklyStats}>
           <View style={styles.weeklyStat}>
             <Text style={styles.weeklyStatValue}>£{weeklyGross.toFixed(2)}</Text>
@@ -331,6 +397,55 @@ export default function DashboardScreen() {
             <Text style={styles.weeklyStatValue}>£{weeklyNet.toFixed(2)}</Text>
             <Text style={styles.weeklyStatLabel}>Net</Text>
           </View>
+        </View>
+      </Card>
+
+      {/* Best Sellers */}
+      <Text style={styles.sectionTitle}>Top Sellers</Text>
+      <Card style={styles.analyticsCard}>
+        {bestSellers.length === 0 ? (
+          <Text style={styles.analyticsEmpty}>No orders yet this week</Text>
+        ) : (
+          bestSellers.map((item, index) => (
+            <View key={item.name} style={[styles.rankRow, index < bestSellers.length - 1 && styles.rankRowBorder]}>
+              <View style={styles.rankBadge}>
+                <Text style={styles.rankNumber}>{index + 1}</Text>
+              </View>
+              <Text style={styles.rankName} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.rankValue}>{item.count} sold</Text>
+            </View>
+          ))
+        )}
+      </Card>
+
+      {/* Peak Times */}
+      <Text style={styles.sectionTitle}>Peak Order Times</Text>
+      <Card style={styles.analyticsCard}>
+        {peakTimes.length === 0 ? (
+          <Text style={styles.analyticsEmpty}>No orders yet this week</Text>
+        ) : (
+          peakTimes.map((item, index) => (
+            <View key={item.hour} style={[styles.rankRow, index < peakTimes.length - 1 && styles.rankRowBorder]}>
+              <Text style={styles.peakTimeLabel}>{item.hour}</Text>
+              <View style={styles.peakBar}>
+                <View style={[styles.peakBarFill, { width: `${item.pct}%` }]} />
+              </View>
+              <Text style={styles.rankValue}>{item.count}</Text>
+            </View>
+          ))
+        )}
+      </Card>
+
+      {/* Repeat Customer Rate */}
+      <Text style={styles.sectionTitle}>Customer Insights</Text>
+      <Card style={styles.analyticsCard}>
+        <View style={styles.insightRow}>
+          <Text style={styles.insightLabel}>Unique Customers (7d)</Text>
+          <Text style={styles.insightValue}>{uniqueCustomers}</Text>
+        </View>
+        <View style={[styles.insightRow, styles.rankRowBorder, { paddingTop: spacing.sm }]}>
+          <Text style={styles.insightLabel}>Repeat Customers</Text>
+          <Text style={[styles.insightValue, { color: colors.success }]}>{repeatCustomers}</Text>
         </View>
       </Card>
 
@@ -595,23 +710,6 @@ const styles = StyleSheet.create({
   chartCard: {
     marginBottom: spacing.lg,
   },
-  chartPlaceholder: {
-    height: 150,
-    backgroundColor: colors.grey100,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  chartPlaceholderText: {
-    fontSize: 32,
-    marginBottom: spacing.sm,
-  },
-  chartPlaceholderLabel: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-  },
   weeklyStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -629,6 +727,84 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  analyticsCard: {
+    marginBottom: spacing.lg,
+  },
+  analyticsEmpty: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  rankRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankNumber: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.primary,
+  },
+  rankName: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.textPrimary,
+  },
+  rankValue: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  peakTimeLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.textPrimary,
+    width: 48,
+  },
+  peakBar: {
+    flex: 1,
+    height: 12,
+    backgroundColor: colors.grey100,
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+  },
+  peakBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  insightLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  insightValue: {
+    fontFamily: fonts.bodyBold,
+    fontSize: fontSizes.lg,
+    color: colors.textPrimary,
   },
   infoCard: {
     flexDirection: 'row',

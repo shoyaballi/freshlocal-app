@@ -14,7 +14,7 @@ import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/the
 import { imageService, ImagePickerResult } from '@/services/imageService';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import type { DietaryBadge, SpiceLevel, FulfilmentType, Meal } from '@/types';
+import type { DietaryBadge, Allergen, SpiceLevel, FulfilmentType, Meal } from '@/types';
 
 interface AddMealSheetProps {
   isOpen: boolean;
@@ -35,8 +35,10 @@ interface MealForm {
   stock: string;
   prepTime: string;
   dietary: DietaryBadge[];
+  allergens: Allergen[];
   spiceLevel: SpiceLevel;
   fulfilmentType: FulfilmentType;
+  recurringDays: number[];
 }
 
 const DIETARY_OPTIONS: { value: DietaryBadge; label: string; emoji: string }[] = [
@@ -53,6 +55,32 @@ const SPICE_OPTIONS: { value: SpiceLevel; label: string }[] = [
   { value: 3, label: 'Hot 🌶️🌶️🌶️' },
 ];
 
+const ALLERGEN_OPTIONS: { value: Allergen; label: string }[] = [
+  { value: 'nuts', label: 'Nuts' },
+  { value: 'dairy', label: 'Dairy' },
+  { value: 'gluten', label: 'Gluten' },
+  { value: 'eggs', label: 'Eggs' },
+  { value: 'soy', label: 'Soy' },
+  { value: 'fish', label: 'Fish' },
+  { value: 'shellfish', label: 'Shellfish' },
+  { value: 'celery', label: 'Celery' },
+  { value: 'mustard', label: 'Mustard' },
+  { value: 'sesame', label: 'Sesame' },
+  { value: 'sulphites', label: 'Sulphites' },
+  { value: 'lupin', label: 'Lupin' },
+  { value: 'molluscs', label: 'Molluscs' },
+];
+
+const DAY_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
+
 const FULFILMENT_OPTIONS: { value: FulfilmentType; label: string }[] = [
   { value: 'collection', label: '📍 Collection' },
   { value: 'delivery', label: '🚗 Delivery' },
@@ -67,8 +95,10 @@ const INITIAL_FORM: MealForm = {
   stock: '10',
   prepTime: '30',
   dietary: ['halal'],
+  allergens: [],
   spiceLevel: 1,
   fulfilmentType: 'collection',
+  recurringDays: [],
 };
 
 export function AddMealSheet({
@@ -99,6 +129,8 @@ export function AddMealSheet({
         stock: String(meal.stock),
         prepTime: String(meal.prepTime),
         dietary: [...meal.dietary],
+        allergens: [...(meal.allergens || [])],
+        recurringDays: meal.recurringDays || [],
         spiceLevel: meal.spiceLevel,
         fulfilmentType: meal.fulfilmentType,
       });
@@ -120,6 +152,24 @@ export function AddMealSheet({
       dietary: prev.dietary.includes(badge)
         ? prev.dietary.filter((d) => d !== badge)
         : [...prev.dietary, badge],
+    }));
+  };
+
+  const toggleDay = (day: number) => {
+    setForm((prev) => ({
+      ...prev,
+      recurringDays: prev.recurringDays.includes(day)
+        ? prev.recurringDays.filter((d) => d !== day)
+        : [...prev.recurringDays, day],
+    }));
+  };
+
+  const toggleAllergen = (allergen: Allergen) => {
+    setForm((prev) => ({
+      ...prev,
+      allergens: prev.allergens.includes(allergen)
+        ? prev.allergens.filter((a) => a !== allergen)
+        : [...prev.allergens, allergen],
     }));
   };
 
@@ -159,10 +209,12 @@ export function AddMealSheet({
         image_url: imageUrl,
         price: parseFloat(form.price),
         dietary: form.dietary,
+        allergens: form.allergens,
         spice_level: form.spiceLevel,
         stock: parseInt(form.stock) || 10,
         max_stock: parseInt(form.stock) || 10,
         fulfilment_type: form.fulfilmentType,
+        recurring_days: form.recurringDays.length > 0 ? form.recurringDays : null,
         prep_time: parseInt(form.prepTime) || 30,
         is_active: true,
       };
@@ -341,6 +393,25 @@ export function AddMealSheet({
             </View>
           </View>
 
+          {/* Allergens (Natasha's Law) */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Allergens (UK Law)</Text>
+            <Text style={styles.hint}>Select all allergens present in this meal</Text>
+            <View style={[styles.optionGrid, { marginTop: spacing.sm }]}>
+              {ALLERGEN_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={form.allergens.includes(option.value) ? 'primary' : 'outline'}
+                  size="sm"
+                  onPress={() => toggleAllergen(option.value)}
+                  style={styles.optionButton}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </View>
+          </View>
+
           {/* Spice Level */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Spice Level</Text>
@@ -369,6 +440,25 @@ export function AddMealSheet({
                   variant={form.fulfilmentType === option.value ? 'primary' : 'outline'}
                   size="sm"
                   onPress={() => setForm((p) => ({ ...p, fulfilmentType: option.value }))}
+                  style={styles.optionButton}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </View>
+          </View>
+
+          {/* Repeat Weekly */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Repeat Weekly (Optional)</Text>
+            <Text style={styles.hint}>Select days to auto-list this meal each week</Text>
+            <View style={[styles.optionGrid, { marginTop: spacing.sm }]}>
+              {DAY_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={form.recurringDays.includes(option.value) ? 'primary' : 'outline'}
+                  size="sm"
+                  onPress={() => toggleDay(option.value)}
                   style={styles.optionButton}
                 >
                   {option.label}

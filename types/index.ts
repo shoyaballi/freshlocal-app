@@ -1,4 +1,6 @@
 // User types
+export type UserRole = 'customer' | 'vendor' | 'admin';
+
 export interface User {
   id: string;
   email: string;
@@ -7,6 +9,7 @@ export interface User {
   avatar?: string;
   postcode?: string;
   isVendor: boolean;
+  role: UserRole;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +54,10 @@ export interface Vendor {
 
 // Meal types
 export type DietaryBadge = 'halal' | 'vegetarian' | 'vegan' | 'gluten_free';
+export type Allergen =
+  | 'nuts' | 'dairy' | 'gluten' | 'eggs' | 'soy'
+  | 'fish' | 'shellfish' | 'celery' | 'mustard'
+  | 'sesame' | 'sulphites' | 'lupin' | 'molluscs';
 export type SpiceLevel = 0 | 1 | 2 | 3;
 export type FulfilmentType = 'collection' | 'delivery' | 'both';
 
@@ -64,7 +71,9 @@ export interface Meal {
   price: number;
   originalPrice?: number;
   dietary: DietaryBadge[];
+  allergens: Allergen[];
   spiceLevel: SpiceLevel;
+  recurringDays?: number[];
   stock: number;
   maxStock: number;
   fulfilmentType: FulfilmentType;
@@ -117,10 +126,28 @@ export interface Order {
   collectionTime?: string;
   deliveryAddress?: string;
   notes?: string;
+  promoCodeId?: string;
+  discountAmount?: number;
   createdAt: string;
   updatedAt: string;
   vendor?: Vendor;
   user?: User;
+}
+
+// Promo code types
+export type DiscountType = 'percentage' | 'fixed';
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  minOrder: number;
+  maxUses?: number;
+  usedCount: number;
+  expiresAt?: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 // Commission model
@@ -140,6 +167,19 @@ export interface ScheduleDay {
   isToday: boolean;
   hasMeals: boolean;
   mealCount: number;
+}
+
+// Review types
+export interface Review {
+  id: string;
+  userId: string;
+  vendorId: string;
+  orderId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: Pick<User, 'id' | 'name' | 'avatar'>;
 }
 
 // Notification types

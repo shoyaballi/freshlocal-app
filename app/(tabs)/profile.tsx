@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
 import { Card, Button } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useAppStore } from '@/stores/appStore';
@@ -58,7 +60,17 @@ function MenuItem({
 export default function ProfileScreen() {
   const { user, isAuthenticated, signOut } = useAuth();
   const { isVendor, notificationCount, favourites } = useAppStore();
-  const { orders } = useOrders();
+  const { orders, refetch: refetchOrders } = useOrders();
+
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetchOrders();
+    setRefreshing(false);
+  }, [refetchOrders]);
 
   // Find active orders (not collected, delivered, or cancelled)
   const activeOrders = orders.filter(
@@ -113,8 +125,16 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         <Card style={styles.profileCard}>
           <View style={styles.profileHeader}>
@@ -169,7 +189,7 @@ export default function ProfileScreen() {
             emoji="🔔"
             title="Notifications"
             badge={notificationCount}
-            onPress={() => console.log('Notifications')}
+            onPress={() => router.push('/notifications')}
           />
         </Card>
 
@@ -212,7 +232,28 @@ export default function ProfileScreen() {
             title="Help & Support"
             onPress={() => console.log('Help')}
           />
+          <MenuItem
+            emoji="📄"
+            title="Terms of Service"
+            onPress={() => router.push('/legal/terms')}
+          />
+          <MenuItem
+            emoji="🔒"
+            title="Privacy Policy"
+            onPress={() => router.push('/legal/privacy')}
+          />
         </Card>
+
+        {user?.role === 'admin' && (
+          <Card style={styles.menuCard} noPadding>
+            <MenuItem
+              emoji="🛡️"
+              title="Admin Panel"
+              subtitle="Manage vendors, orders, analytics"
+              onPress={() => router.push('/admin')}
+            />
+          </Card>
+        )}
 
         <Card style={styles.menuCard} noPadding>
           <MenuItem

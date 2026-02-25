@@ -14,6 +14,8 @@ export interface OrderFlowState {
   selectedAddress: Address | null;
   selectedTimeSlot: string | null;
   notes: string;
+  promoCodeId: string | null;
+  discountAmount: number;
   createdOrder: Order | null;
   isSubmitting: boolean;
   error: string | null;
@@ -24,6 +26,7 @@ export interface OrderFlowComputed {
   subtotal: number;
   serviceFee: number;
   deliveryFee: number;
+  discountAmount: number;
   total: number;
 }
 
@@ -41,6 +44,8 @@ type OrderFlowAction =
   | { type: 'SUBMIT_START' }
   | { type: 'SUBMIT_SUCCESS'; payload: Order }
   | { type: 'SUBMIT_ERROR'; payload: string }
+  | { type: 'SET_PROMO'; payload: { promoCodeId: string; discountAmount: number } }
+  | { type: 'REMOVE_PROMO' }
   | { type: 'RESET' };
 
 // Initial state
@@ -53,6 +58,8 @@ const initialState: OrderFlowState = {
   selectedAddress: null,
   selectedTimeSlot: null,
   notes: '',
+  promoCodeId: null,
+  discountAmount: 0,
   createdOrder: null,
   isSubmitting: false,
   error: null,
@@ -143,6 +150,16 @@ function orderFlowReducer(state: OrderFlowState, action: OrderFlowAction): Order
     case 'SUBMIT_ERROR':
       return { ...state, isSubmitting: false, error: action.payload };
 
+    case 'SET_PROMO':
+      return {
+        ...state,
+        promoCodeId: action.payload.promoCodeId,
+        discountAmount: action.payload.discountAmount,
+      };
+
+    case 'REMOVE_PROMO':
+      return { ...state, promoCodeId: null, discountAmount: 0 };
+
     case 'RESET':
       return initialState;
 
@@ -196,15 +213,17 @@ export function OrderFlowProvider({
     const subtotal = mealPrice * state.quantity;
     const serviceFee = subtotal * 0.05;
     const deliveryFee = state.fulfilmentType === 'delivery' ? 2.5 : 0;
-    const total = subtotal + serviceFee + deliveryFee;
+    const discount = state.discountAmount;
+    const total = subtotal + serviceFee + deliveryFee - discount;
 
     return {
       subtotal: Math.round(subtotal * 100) / 100,
       serviceFee: Math.round(serviceFee * 100) / 100,
       deliveryFee,
-      total: Math.round(total * 100) / 100,
+      discountAmount: discount,
+      total: Math.round(Math.max(0, total) * 100) / 100,
     };
-  }, [state.meal?.price, state.quantity, state.fulfilmentType]);
+  }, [state.meal?.price, state.quantity, state.fulfilmentType, state.discountAmount]);
 
   const value = useMemo(
     () => ({ state, computed, dispatch }),

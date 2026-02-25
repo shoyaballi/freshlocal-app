@@ -50,6 +50,20 @@ export function MealDetailStep() {
         <SpiceBadge level={meal.spiceLevel} />
       </View>
 
+      {/* Allergen Warning */}
+      <View style={styles.allergenCard}>
+        {meal.allergens && meal.allergens.length > 0 ? (
+          <Text style={styles.allergenWarning}>
+            {'⚠️ Contains: '}
+            {meal.allergens.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')}
+          </Text>
+        ) : (
+          <Text style={styles.allergenUnknown}>
+            {'⚠️ Allergen info not provided \u2014 contact vendor'}
+          </Text>
+        )}
+      </View>
+
       {/* Price */}
       <View style={styles.priceRow}>
         <Text style={styles.price}>£{meal.price.toFixed(2)}</Text>
@@ -162,6 +176,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  allergenCard: {
+    backgroundColor: colors.accentPale,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  allergenWarning: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.accent,
+    textAlign: 'center',
+  },
+  allergenUnknown: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   priceRow: {
     flexDirection: 'row',

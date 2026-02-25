@@ -15,6 +15,7 @@ interface UseOrdersResult {
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
+  cancelOrder: (orderId: string) => Promise<void>;
 }
 
 export function useOrders(options: UseOrdersOptions = {}): UseOrdersResult {
@@ -133,7 +134,24 @@ export function useOrders(options: UseOrdersOptions = {}): UseOrdersResult {
     fetchOrders();
   }, [fetchOrders]);
 
-  return { orders, isLoading, error, refetch: fetchOrders };
+  const cancelOrder = useCallback(async (orderId: string) => {
+    const { error: cancelError } = await supabase
+      .from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', orderId)
+      .eq('status', 'pending');
+
+    if (cancelError) {
+      throw new Error('Failed to cancel order');
+    }
+
+    // Update local state
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' as OrderStatus } : o))
+    );
+  }, []);
+
+  return { orders, isLoading, error, refetch: fetchOrders, cancelOrder };
 }
 
 export default useOrders;

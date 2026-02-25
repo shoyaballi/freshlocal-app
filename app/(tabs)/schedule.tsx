@@ -1,16 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useScrollToTop } from '@react-navigation/native';
 import { Header } from '@/components/layout';
+import { ErrorState, MealGridSkeleton } from '@/components/ui';
 import { MealGrid } from '@/components/meals';
 import { OrderBottomSheet } from '@/components/order-flow';
+import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useMeals, useVendors } from '@/hooks';
 import type { ScheduleDay, Meal } from '@/types';
@@ -45,12 +48,22 @@ export default function ScheduleScreen() {
   const [isOrderSheetVisible, setIsOrderSheetVisible] = useState(false);
 
   // Fetch meals for selected date
-  const { meals: selectedDayMeals, isLoading: mealsLoading } = useMeals({
+  const { meals: selectedDayMeals, isLoading: mealsLoading, error: mealsError, refetch: refetchMeals } = useMeals({
     date: selectedDate,
   });
 
   // Fetch vendors for the map
   const { vendorsMap } = useVendors();
+
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetchMeals();
+    setRefreshing(false);
+  }, [refetchMeals]);
 
   // Update schedule days with meal counts from fetched data
   // For a production app, you'd want to fetch meal counts for all dates
@@ -82,7 +95,10 @@ export default function ScheduleScreen() {
           {scheduleDays.map((day) => (
             <Pressable
               key={day.date}
-              onPress={() => setSelectedDate(day.date)}
+              onPress={() => {
+                haptic.light();
+                setSelectedDate(day.date);
+              }}
               style={[
                 styles.dateCard,
                 selectedDate === day.date && styles.dateCardActive,
@@ -128,13 +144,25 @@ export default function ScheduleScreen() {
       </Text>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         {mealsLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
+          <MealGridSkeleton count={4} />
+        ) : mealsError ? (
+          <ErrorState
+            title="Couldn't load meals"
+            message="Check your connection and try again."
+            onRetry={handleRefresh}
+          />
         ) : selectedDayMeals.length > 0 ? (
           <MealGrid
             meals={selectedDayMeals}

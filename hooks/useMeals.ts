@@ -94,7 +94,9 @@ export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
         price: meal.price / 100, // Convert pence to pounds
         originalPrice: meal.original_price ? meal.original_price / 100 : undefined,
         dietary: meal.dietary,
+        allergens: meal.allergens || [],
         spiceLevel: parseInt(meal.spice_level) as 0 | 1 | 2 | 3,
+        recurringDays: meal.recurring_days || undefined,
         stock: meal.stock,
         maxStock: meal.max_stock,
         fulfilmentType: meal.fulfilment_type,

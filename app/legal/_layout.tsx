@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { colors } from '@/constants/theme';
 
-export default function VendorLayout() {
+export default function LegalLayout() {
   return (
     <Stack
       screenOptions={{
@@ -9,9 +9,6 @@ export default function VendorLayout() {
         contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
       }}
-    >
-      <Stack.Screen name="[id]" />
-      <Stack.Screen name="signup" />
-    </Stack>
+    />
   );
 }

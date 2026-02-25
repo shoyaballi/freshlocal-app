@@ -5,7 +5,7 @@ import { Button, Input } from '@/components/ui';
 import { PriceBreakdown } from '../components';
 import { useOrderFlow } from '../OrderFlowContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateOrder, useStripePayment } from '@/hooks';
+import { useCreateOrder, useStripePayment, usePromoCodes } from '@/hooks';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 
 export function ReviewStep() {
@@ -13,7 +13,9 @@ export function ReviewStep() {
   const { user, isAuthenticated } = useAuth();
   const { createOrder, isLoading: isCreatingOrder } = useCreateOrder();
   const { initializePayment, presentPaymentSheet, isLoading: isPaymentLoading } = useStripePayment();
+  const { isValidating, appliedPromo, validateCode, calculateDiscount, applyCode, removeCode } = usePromoCodes();
   const [paymentStep, setPaymentStep] = useState<'idle' | 'creating' | 'paying'>('idle');
+  const [promoInput, setPromoInput] = useState('');
 
   const {
     meal,
@@ -27,7 +29,7 @@ export function ReviewStep() {
     error,
   } = state;
 
-  const { subtotal, serviceFee, deliveryFee, total } = computed;
+  const { subtotal, serviceFee, deliveryFee, discountAmount, total } = computed;
 
   if (!meal || !vendor || !fulfilmentType) return null;
 
@@ -41,6 +43,27 @@ export function ReviewStep() {
 
   const handleBack = () => {
     dispatch({ type: 'PREV_STEP' });
+  };
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    const result = await validateCode(promoInput, subtotal);
+    if (result.valid && result.promoCode) {
+      const discount = calculateDiscount(result.promoCode, subtotal);
+      applyCode(result.promoCode);
+      dispatch({
+        type: 'SET_PROMO',
+        payload: { promoCodeId: result.promoCode.id, discountAmount: discount },
+      });
+      setPromoInput('');
+    } else {
+      Alert.alert('Invalid Code', result.error || 'This promo code is not valid.');
+    }
+  };
+
+  const handleRemovePromo = () => {
+    removeCode();
+    dispatch({ type: 'REMOVE_PROMO' });
   };
 
   const handlePayment = async () => {
@@ -87,6 +110,8 @@ export function ReviewStep() {
             }
           : undefined,
         notes: notes || undefined,
+        promoCodeId: state.promoCodeId || undefined,
+        discountAmount: state.discountAmount || undefined,
       });
 
       setPaymentStep('paying');
@@ -184,8 +209,50 @@ export function ReviewStep() {
           subtotal={subtotal}
           serviceFee={serviceFee}
           deliveryFee={deliveryFee}
+          discountAmount={discountAmount}
           total={total}
         />
+      </View>
+
+      {/* Promo Code */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Promo code</Text>
+        {appliedPromo ? (
+          <View style={styles.promoApplied}>
+            <View style={styles.promoAppliedInfo}>
+              <Text style={styles.promoAppliedCode}>{appliedPromo.code}</Text>
+              <Text style={styles.promoAppliedDiscount}>
+                {appliedPromo.discountType === 'percentage'
+                  ? `${appliedPromo.discountValue}% off`
+                  : `£${appliedPromo.discountValue.toFixed(2)} off`}
+              </Text>
+            </View>
+            <Pressable onPress={handleRemovePromo}>
+              <Text style={styles.promoRemove}>Remove</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.promoInputRow}>
+            <View style={styles.promoInputWrapper}>
+              <Input
+                placeholder="Enter code"
+                value={promoInput}
+                onChangeText={setPromoInput}
+                autoCapitalize="characters"
+              />
+            </View>
+            <Button
+              size="sm"
+              variant="outline"
+              onPress={handleApplyPromo}
+              loading={isValidating}
+              disabled={!promoInput.trim()}
+              style={styles.promoApplyButton}
+            >
+              Apply
+            </Button>
+          </View>
+        )}
       </View>
 
       {/* Notes */}
@@ -313,6 +380,43 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.error,
     textAlign: 'center',
+  },
+  promoInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  promoInputWrapper: {
+    flex: 1,
+  },
+  promoApplyButton: {
+    marginTop: spacing.xs,
+  },
+  promoApplied: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.successPale,
+    borderRadius: borderRadius.md,
+  },
+  promoAppliedInfo: {
+    flex: 1,
+  },
+  promoAppliedCode: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.md,
+    color: colors.success,
+  },
+  promoAppliedDiscount: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  promoRemove: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.error,
   },
   payButton: {
     marginTop: spacing.md,

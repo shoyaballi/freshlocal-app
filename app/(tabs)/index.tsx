@@ -1,19 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useScrollToTop } from '@react-navigation/native';
 import { LocationHeader } from '@/components/layout';
-import { SearchInput } from '@/components/ui';
+import { SearchInput, ErrorState, MealGridSkeleton, VendorListSkeleton } from '@/components/ui';
 import { MealCard, MealGrid } from '@/components/meals';
 import { VendorCardCompact } from '@/components/vendors';
 import { OrderBottomSheet } from '@/components/order-flow';
+import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { DIETARY_FILTERS } from '@/constants/mockData';
 import { useAppStore } from '@/stores/appStore';
@@ -32,7 +34,7 @@ export default function TodayScreen() {
 
   // Fetch meals for today
   const dietaryFilter = activeFilter === 'all' ? undefined : [activeFilter as DietaryBadge];
-  const { meals: todayMealsRaw, isLoading: mealsLoading } = useMeals({
+  const { meals: todayMealsRaw, isLoading: mealsLoading, error: mealsError, refetch: refetchMeals } = useMeals({
     date: today,
     dietary: dietaryFilter,
   });
@@ -41,7 +43,17 @@ export default function TodayScreen() {
   const { meals: tomorrowMealsRaw } = useMeals({ date: tomorrow });
 
   // Fetch vendors
-  const { vendors, vendorsMap, isLoading: vendorsLoading } = useVendors();
+  const { vendors, vendorsMap, isLoading: vendorsLoading, error: vendorsError, refetch: refetchVendors } = useVendors();
+
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchMeals(), refetchVendors()]);
+    setRefreshing(false);
+  }, [refetchMeals, refetchVendors]);
 
   const isSearching = searchQuery.trim().length > 0;
 
@@ -89,8 +101,7 @@ export default function TodayScreen() {
   const selectedVendor = selectedMeal ? vendorsMap[selectedMeal.vendorId] : null;
 
   const handleVendorPress = (vendor: Vendor) => {
-    // TODO: Navigate to vendor profile
-    console.log('Vendor pressed:', vendor.businessName);
+    router.push(`/vendor/${vendor.id}` as any);
   };
 
   const isLoading = mealsLoading || vendorsLoading;
@@ -157,8 +168,16 @@ export default function TodayScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         <LocationHeader
           location={postcode || 'Blackburn BB1'}
@@ -189,7 +208,10 @@ export default function TodayScreen() {
               {DIETARY_FILTERS.map((filter) => (
                 <Pressable
                   key={filter.key}
-                  onPress={() => setActiveFilter(filter.key as 'all' | DietaryBadge)}
+                  onPress={() => {
+                    haptic.light();
+                    setActiveFilter(filter.key as 'all' | DietaryBadge);
+                  }}
                   style={[
                     styles.filterChip,
                     activeFilter === filter.key && styles.filterChipActive,
@@ -208,10 +230,18 @@ export default function TodayScreen() {
             </ScrollView>
 
             {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.loadingText}>Loading meals...</Text>
+              <View style={{ paddingTop: spacing.md }}>
+                <MealGridSkeleton count={4} />
+                <View style={{ marginTop: spacing.xl }}>
+                  <VendorListSkeleton count={2} />
+                </View>
               </View>
+            ) : mealsError || vendorsError ? (
+              <ErrorState
+                title="Couldn't load meals"
+                message="Check your connection and try again."
+                onRetry={handleRefresh}
+              />
             ) : (
               <>
                 <MealGrid
@@ -219,7 +249,7 @@ export default function TodayScreen() {
                   meals={todayMeals}
                   vendors={vendorsMap}
                   onMealPress={handleMealPress}
-                  horizontal
+                  horizontal={false}
                   emptyMessage="No meals available with current filters"
                 />
 

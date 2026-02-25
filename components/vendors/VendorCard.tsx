@@ -1,6 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Card, Badge } from '@/components/ui';
+import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import type { Vendor, FoodTag } from '@/types';
 
@@ -9,6 +16,8 @@ interface VendorCardProps {
   onPress?: () => void;
   distance?: string;
   upcomingMeals?: number;
+  isFavourite?: boolean;
+  onFavouriteToggle?: (vendorId: string) => void;
 }
 
 const TAG_LABELS: Record<FoodTag, string> = {
@@ -28,7 +37,23 @@ export function VendorCard({
   onPress,
   distance,
   upcomingMeals,
+  isFavourite = false,
+  onFavouriteToggle,
 }: VendorCardProps) {
+  const heartScale = useSharedValue(1);
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
+  }));
+
+  const handleHeartPress = () => {
+    haptic.light();
+    heartScale.value = withSequence(
+      withSpring(1.3, { damping: 4, stiffness: 300 }),
+      withSpring(1, { damping: 6, stiffness: 200 })
+    );
+    onFavouriteToggle?.(vendor.id);
+  };
+
   return (
     <Card style={styles.card} onPress={onPress}>
       <View style={styles.header}>
@@ -42,6 +67,13 @@ export function VendorCard({
           </View>
           <Text style={styles.handle}>@{vendor.handle}</Text>
         </View>
+        {onFavouriteToggle && (
+          <Pressable onPress={handleHeartPress} hitSlop={8}>
+            <Animated.Text style={[styles.heartIcon, heartAnimatedStyle]}>
+              {isFavourite ? '❤️' : '🤍'}
+            </Animated.Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.tagRow}>
@@ -165,6 +197,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
+  },
+  heartIcon: {
+    fontSize: 24,
   },
 
   // Compact styles

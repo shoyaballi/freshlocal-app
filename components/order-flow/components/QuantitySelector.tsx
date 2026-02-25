@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
+import { haptic } from '@/lib/haptics';
 
 interface QuantitySelectorProps {
   value: number;
@@ -20,12 +21,14 @@ export function QuantitySelector({
 
   const decrease = () => {
     if (canDecrease) {
+      haptic.light();
       onChange(value - 1);
     }
   };
 
   const increase = () => {
     if (canIncrease) {
+      haptic.light();
       onChange(value + 1);
     }
   };
