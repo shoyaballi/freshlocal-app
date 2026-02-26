@@ -1,6 +1,6 @@
 -- Promo codes table
 CREATE TABLE promo_codes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
   discount_type TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
   discount_value INTEGER NOT NULL CHECK (discount_value > 0),
