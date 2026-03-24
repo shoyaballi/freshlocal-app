@@ -22,6 +22,8 @@ interface CreateOrderInput {
     postcode: string;
   };
   notes?: string;
+  promoCodeId?: string;
+  discountAmount?: number; // In pence
 }
 
 interface UseCreateOrderResult {
@@ -55,7 +57,8 @@ export function useCreateOrder(): UseCreateOrderResult {
       );
       const serviceFee = Math.round(subtotal * SERVICE_FEE_RATE);
       const deliveryFee = input.fulfilmentType === 'delivery' ? DELIVERY_FEE_PENCE : null;
-      const total = subtotal + serviceFee + (deliveryFee || 0);
+      const discountAmountPence = input.discountAmount || 0;
+      const total = subtotal + serviceFee + (deliveryFee || 0) - discountAmountPence;
 
       // Insert order
       const { data: orderData, error: orderError } = await supabase
@@ -69,6 +72,8 @@ export function useCreateOrder(): UseCreateOrderResult {
           service_fee: serviceFee,
           delivery_fee: deliveryFee,
           total,
+          promo_code_id: input.promoCodeId || null,
+          discount_amount: input.discountAmount || 0,
           collection_time: input.collectionTime,
           delivery_address: input.deliveryAddress,
           notes: input.notes,
@@ -123,6 +128,8 @@ export function useCreateOrder(): UseCreateOrderResult {
         subtotal: subtotal / 100,
         serviceFee: serviceFee / 100,
         deliveryFee: deliveryFee ? deliveryFee / 100 : undefined,
+        discountAmount: discountAmountPence ? discountAmountPence / 100 : undefined,
+        promoCodeId: input.promoCodeId,
         total: total / 100,
         collectionTime: orderData.collection_time,
         deliveryAddress: orderData.delivery_address

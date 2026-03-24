@@ -140,10 +140,10 @@ export default function VendorSignupScreen() {
           handle: handle.trim().toLowerCase(),
           description: description.trim(),
           business_type: businessType,
-          food_tags: selectedTags,
+          tags: selectedTags,
           phone: phone.trim(),
           postcode: postcode.trim().toUpperCase(),
-          is_active: false, // Will be activated after Stripe onboarding
+          is_active: true, // TODO: set to false for production
         })
         .select()
         .single();
@@ -160,7 +160,25 @@ export default function VendorSignupScreen() {
 
       setIsVendor(true);
 
-      // 3. Create Stripe Connect account
+      // 3. Notify admins of new vendor application
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (admins?.length) {
+        await supabase.from('notifications').insert(
+          admins.map((admin) => ({
+            user_id: admin.id,
+            title: 'New Vendor Application',
+            body: `${businessName.trim()} has applied to join as a vendor.`,
+            type: 'system',
+            data: { screen: '/admin/vendors', vendorId: vendor.id },
+          }))
+        );
+      }
+
+      // 4. Create Stripe Connect account
       const accountId = await createConnectAccount(
         vendor.id,
         businessName.trim(),
@@ -178,10 +196,10 @@ export default function VendorSignupScreen() {
         return;
       }
 
-      // 4. Open Stripe onboarding
+      // 5. Open Stripe onboarding
       await openOnboarding(vendor.id);
 
-      // 5. Navigate to onboarding status screen
+      // 6. Navigate to onboarding status screen
       router.replace('/vendor/onboarding-status');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create vendor account';

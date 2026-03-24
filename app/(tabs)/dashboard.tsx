@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
@@ -30,42 +31,47 @@ export default function DashboardScreen() {
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const { user } = useAuth();
 
+  const [vendorLoading, setVendorLoading] = useState(true);
+
   // Fetch vendor info for the current user
-  useEffect(() => {
-    async function fetchVendor() {
-      if (!user) return;
+  const fetchVendor = useCallback(async () => {
+    if (!user) return;
+    setVendorLoading(true);
 
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+    const { data, error } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
 
-      if (data && !error) {
-        setVendorId(data.id);
-        setVendor({
-          id: data.id,
-          userId: data.user_id,
-          businessName: data.business_name,
-          handle: data.handle,
-          description: data.description,
-          businessType: data.business_type,
-          avatar: data.avatar,
-          coverImage: data.cover_image,
-          tags: data.tags,
-          phone: data.phone,
-          postcode: data.postcode,
-          rating: data.rating,
-          reviewCount: data.review_count,
-          isVerified: data.is_verified,
-          isActive: data.is_active,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        });
-      }
+    if (data && !error) {
+      setVendorId(data.id);
+      setVendor({
+        id: data.id,
+        userId: data.user_id,
+        businessName: data.business_name,
+        handle: data.handle,
+        description: data.description,
+        businessType: data.business_type,
+        avatar: data.avatar,
+        coverImage: data.cover_image,
+        tags: data.tags,
+        phone: data.phone,
+        postcode: data.postcode,
+        rating: data.rating,
+        reviewCount: data.review_count,
+        isVerified: data.is_verified,
+        isActive: data.is_active,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      });
     }
-    fetchVendor();
+    setVendorLoading(false);
   }, [user]);
+
+  useEffect(() => {
+    fetchVendor();
+  }, [fetchVendor]);
 
   // Fetch vendor orders
   const { orders, isLoading: ordersLoading, error: ordersError, refetch, updateOrderStatus } = useVendorOrders();
@@ -458,6 +464,35 @@ export default function DashboardScreen() {
     </ScrollView>
   );
 
+  // Vendor approval gate
+  if (vendorLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.pendingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (vendor && !vendor.isActive) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.pendingContainer}>
+          <Text style={styles.pendingIcon}>⏳</Text>
+          <Text style={styles.pendingTitle}>Pending Approval</Text>
+          <Text style={styles.pendingSubtitle}>Your application is under review</Text>
+          <Text style={styles.pendingText}>
+            We'll notify you once your vendor account has been approved. This usually takes 1-2 business days.
+          </Text>
+          <Button onPress={fetchVendor} style={styles.pendingButton}>
+            Refresh Status
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
@@ -821,5 +856,40 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+
+  // Pending approval
+  pendingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['2xl'],
+  },
+  pendingIcon: {
+    fontSize: 64,
+    marginBottom: spacing.xl,
+  },
+  pendingTitle: {
+    fontFamily: fonts.heading,
+    fontSize: fontSizes['2xl'],
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  pendingSubtitle: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.lg,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  pendingText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.md,
+    color: colors.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  pendingButton: {
+    minWidth: 200,
   },
 });
