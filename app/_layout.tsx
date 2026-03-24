@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { View, Text, Pressable, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts,
   PlayfairDisplay_800ExtraBold,
@@ -13,21 +13,20 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StripeProvider } from '@stripe/stripe-react-native';
 import { colors } from '@/constants/theme';
 import { ProtectedRoute } from '@/components/auth';
+import { StripeWrapper } from '@/components/providers/StripeWrapper';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 
-const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
-
-// Prevent splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
+// Splash screen — native only (blocks rendering on web)
+if (Platform.OS !== 'web') {
+  const SplashScreen = require('expo-splash-screen');
+  SplashScreen.preventAutoHideAsync();
+}
 
 function RootLayoutNav() {
-  // Initialize auth - this sets up the auth listener
   useAuth();
-  // Initialize notifications
   useNotifications();
 
   return (
@@ -103,25 +102,49 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      if (Platform.OS !== 'web') {
+        const SplashScreen = require('expo-splash-screen');
+        SplashScreen.hideAsync();
+      }
     }
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 20, color: colors.primary }}>Loading...</Text>
+      </View>
+    );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StripeProvider
-        publishableKey={stripePublishableKey}
-        merchantIdentifier="merchant.com.freshlocal.app"
-      >
+      <StripeWrapper>
         <StatusBar style="dark" />
         <ProtectedRoute>
           <RootLayoutNav />
         </ProtectedRoute>
-      </StripeProvider>
+      </StripeWrapper>
     </GestureHandlerRootView>
+  );
+}
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Text style={{ fontSize: 48, marginBottom: 16 }}>😕</Text>
+      <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 20, color: colors.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+        Something went wrong
+      </Text>
+      <Text style={{ fontFamily: 'PlusJakartaSans_400Regular', fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24 }}>
+        {error.message}
+      </Text>
+      <Pressable
+        onPress={retry}
+        style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+      >
+        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 16, color: '#fff' }}>Try Again</Text>
+      </Pressable>
+    </View>
   );
 }

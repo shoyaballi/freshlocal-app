@@ -1,6 +1,14 @@
 import { useState, useCallback } from 'react';
-import { useStripe } from '@stripe/stripe-react-native';
+import { Alert } from 'react-native';
 import { supabase } from '@/lib/supabase';
+
+// Stripe native SDK isn't available in Expo Go — load conditionally
+let useStripe: any = null;
+try {
+  useStripe = require('@stripe/stripe-react-native').useStripe;
+} catch {
+  // Stripe not available
+}
 
 interface PaymentSheetParams {
   paymentIntent: string;
@@ -20,7 +28,24 @@ export function useStripePayment(): UseStripePaymentReturn {
   const [error, setError] = useState<string | null>(null);
   const [paymentSheetReady, setPaymentSheetReady] = useState(false);
 
-  const { initPaymentSheet, presentPaymentSheet: stripePresent } = useStripe();
+  const stripe = useStripe ? useStripe() : null;
+  const initPaymentSheet = stripe?.initPaymentSheet;
+  const stripePresent = stripe?.presentPaymentSheet;
+
+  if (!stripe) {
+    return {
+      isLoading: false,
+      error: null,
+      initializePayment: async () => {
+        Alert.alert('Payments Unavailable', 'Stripe is not available in Expo Go. Use a development build to test payments.');
+        return false;
+      },
+      presentPaymentSheet: async () => ({
+        success: false,
+        error: 'Stripe not available in Expo Go',
+      }),
+    };
+  }
 
   const initializePayment = useCallback(async (
     orderId: string,

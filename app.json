@@ -27,7 +27,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "FreshLocal — Halal Food Marketplace",
+      "shortName": "FreshLocal",
+      "description": "Hyperlocal halal food marketplace — discover home-cooked meals from local vendors."
     },
     "plugins": [
       "expo-router",

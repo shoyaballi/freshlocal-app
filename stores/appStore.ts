@@ -12,10 +12,12 @@ interface AppState {
   isVendor: boolean;
   hasOnboarded: boolean;
   postcode: string | null;
+  address: string | null;
   favourites: string[];
   dietaryFilters: DietaryBadge[];
   notificationCount: number;
   pushToken: string | null;
+  sidebarCollapsed: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -24,6 +26,7 @@ interface AppState {
   setIsVendor: (isVendor: boolean) => void;
   setHasOnboarded: (hasOnboarded: boolean) => void;
   setPostcode: (postcode: string | null) => void;
+  setAddress: (address: string | null) => void;
   addFavourite: (mealId: string) => void;
   removeFavourite: (mealId: string) => void;
   toggleFavourite: (mealId: string) => void;
@@ -32,6 +35,8 @@ interface AppState {
   setNotificationCount: (count: number) => void;
   clearNotifications: () => void;
   setPushToken: (token: string | null) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
   reset: () => void;
 }
 
@@ -42,10 +47,12 @@ const initialState = {
   isVendor: false,
   hasOnboarded: false,
   postcode: null,
+  address: null,
   favourites: [],
   dietaryFilters: [],
   notificationCount: 0,
   pushToken: null,
+  sidebarCollapsed: false,
 };
 
 // Simple in-memory storage fallback for when AsyncStorage isn't available
@@ -73,6 +80,7 @@ export const useAppStore = create<AppState>()(
       setIsVendor: (isVendor) => set({ isVendor }),
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
       setPostcode: (postcode) => set({ postcode }),
+      setAddress: (address) => set({ address }),
 
       addFavourite: (mealId) => {
         const { favourites } = get();
@@ -109,6 +117,8 @@ export const useAppStore = create<AppState>()(
       setNotificationCount: (count) => set({ notificationCount: count }),
       clearNotifications: () => set({ notificationCount: 0 }),
       setPushToken: (token) => set({ pushToken: token }),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
       reset: () => set(initialState),
     }),
@@ -118,8 +128,10 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         hasOnboarded: state.hasOnboarded,
         postcode: state.postcode,
+        address: state.address,
         favourites: state.favourites,
         dietaryFilters: state.dietaryFilters,
+        sidebarCollapsed: state.sidebarCollapsed,
       }),
     }
   )

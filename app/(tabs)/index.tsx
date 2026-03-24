@@ -15,6 +15,7 @@ import { SearchInput, ErrorState, MealGridSkeleton, VendorListSkeleton } from '@
 import { MealCard, MealGrid } from '@/components/meals';
 import { VendorCardCompact } from '@/components/vendors';
 import { OrderBottomSheet } from '@/components/order-flow';
+import { LocationPickerSheet } from '@/components/location';
 import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { DIETARY_FILTERS } from '@/constants/mockData';
@@ -27,7 +28,8 @@ export default function TodayScreen() {
   const [activeFilter, setActiveFilter] = useState<'all' | DietaryBadge>('all');
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [isOrderSheetVisible, setIsOrderSheetVisible] = useState(false);
-  const { postcode } = useAppStore();
+  const [isLocationSheetVisible, setIsLocationSheetVisible] = useState(false);
+  const { postcode, address } = useAppStore();
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -180,10 +182,12 @@ export default function TodayScreen() {
         }
       >
         <LocationHeader
-          location={postcode || 'Blackburn BB1'}
-          onLocationPress={() => {
-            // TODO: Open location picker
-          }}
+          location={
+            address
+              ? `${postcode}, ${address}`
+              : postcode || 'Set your location'
+          }
+          onLocationPress={() => setIsLocationSheetVisible(true)}
         />
 
         <View style={styles.searchContainer}>
@@ -302,6 +306,11 @@ export default function TodayScreen() {
         meal={selectedMeal}
         vendor={selectedVendor || null}
       />
+
+      <LocationPickerSheet
+        isVisible={isLocationSheetVisible}
+        onClose={() => setIsLocationSheetVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -322,14 +331,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
     marginBottom: spacing.xl,
+    alignItems: 'center',
   },
   filterChip: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.full,
     backgroundColor: colors.cardBackground,
     borderWidth: 1,
     borderColor: colors.border,
+    alignSelf: 'flex-start' as const,
   },
   filterChipActive: {
     backgroundColor: colors.primary,

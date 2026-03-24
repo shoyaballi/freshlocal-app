@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Dimensions,
   ViewStyle,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -16,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors, borderRadius, spacing, shadows } from '@/constants/theme';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 50;
@@ -29,7 +32,54 @@ interface BottomSheetProps {
   style?: ViewStyle;
 }
 
-export function BottomSheet({
+// Desktop web: centred modal overlay
+function DesktopModal({ isVisible, onClose, children, style }: BottomSheetProps) {
+  if (!isVisible) return null;
+
+  return (
+    <Modal transparent visible={isVisible} animationType="fade">
+      <Pressable style={desktopStyles.backdrop} onPress={onClose}>
+        <Pressable
+          style={[desktopStyles.modal, style]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <ScrollView
+            style={desktopStyles.scrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const desktopStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    cursor: 'default' as any,
+  },
+  modal: {
+    backgroundColor: colors.backgroundWhite,
+    borderRadius: borderRadius['2xl'],
+    maxWidth: 480,
+    width: '90%',
+    maxHeight: '80%',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    ...shadows.lg,
+  },
+  scrollView: {
+    flexGrow: 0,
+  },
+});
+
+// Mobile / native: swipeable bottom sheet
+function MobileBottomSheet({
   isVisible,
   onClose,
   children,
@@ -94,13 +144,13 @@ export function BottomSheet({
 
   return (
     <Modal transparent visible={isVisible} animationType="none">
-      <GestureHandlerRootView style={styles.container}>
-        <Animated.View style={[styles.backdrop, rBackdropStyle]}>
+      <GestureHandlerRootView style={mobileStyles.container}>
+        <Animated.View style={[mobileStyles.backdrop, rBackdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
         </Animated.View>
         <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.sheet, rBottomSheetStyle, style]}>
-            <View style={styles.handle} />
+          <Animated.View style={[mobileStyles.sheet, rBottomSheetStyle, style]}>
+            <View style={mobileStyles.handle} />
             {children}
           </Animated.View>
         </GestureDetector>
@@ -109,7 +159,7 @@ export function BottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const mobileStyles = StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -138,5 +188,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 });
+
+// Export: picks desktop modal or mobile bottom sheet
+export function BottomSheet(props: BottomSheetProps) {
+  const { isDesktop } = useResponsive();
+  const useDesktopModal = Platform.OS === 'web' && isDesktop;
+
+  if (useDesktopModal) {
+    return <DesktopModal {...props} />;
+  }
+  return <MobileBottomSheet {...props} />;
+}
 
 export default BottomSheet;

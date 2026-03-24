@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
+import { View, StyleSheet, ViewStyle, Pressable, Platform } from 'react-native';
 import { colors, borderRadius, shadows, spacing } from '@/constants/theme';
 
 interface CardProps {
@@ -33,9 +33,11 @@ export function Card({
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [
+        style={({ pressed, hovered }: any) => [
           cardStyle,
           pressed && styles.pressed,
+          Platform.OS === 'web' && styles.interactive,
+          Platform.OS === 'web' && hovered && styles.hovered,
         ]}
       >
         {children}
@@ -55,6 +57,16 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.95,
     transform: [{ scale: 0.99 }],
+  },
+  interactive: {
+    cursor: 'pointer' as any,
+    // @ts-ignore web transition
+    transitionProperty: 'transform, box-shadow',
+    transitionDuration: '150ms',
+  },
+  hovered: {
+    transform: [{ scale: 1.01 }, { translateY: -2 }],
+    ...shadows.lg,
   },
 });
 

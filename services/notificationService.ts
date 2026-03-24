@@ -1,20 +1,26 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import type { OrderStatus, NotificationPayload } from '@/types';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Conditionally import native notification modules
+let Notifications: typeof import('expo-notifications') | null = null;
+let Device: typeof import('expo-device') | null = null;
+
+if (Platform.OS !== 'web') {
+  Notifications = require('expo-notifications');
+  Device = require('expo-device');
+
+  // Configure notification behavior (native only)
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // Status-specific notification messages
 const STATUS_MESSAGES: Record<OrderStatus, { title: string; body: string }> = {
@@ -52,6 +58,11 @@ class NotificationService {
   private expoPushToken: string | null = null;
 
   async initialize(): Promise<string | null> {
+    // Push notifications not supported on web
+    if (Platform.OS === 'web' || !Notifications || !Device) {
+      return null;
+    }
+
     if (!Device.isDevice) {
       console.log('Push notifications require a physical device');
       return null;
@@ -71,8 +82,15 @@ class NotificationService {
     }
 
     try {
-      // Get Expo push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      // Get Expo push token — projectId is required for Expo Go
+      const Constants = require('expo-constants').default;
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId
+        ?? Constants.expoConfig?.extra?.projectId;
+
+      if (!projectId) {
+        return null;
+      }
+
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId,
       });
@@ -114,6 +132,8 @@ class NotificationService {
   }
 
   async showLocalNotification(payload: NotificationPayload): Promise<void> {
+    if (!Notifications) return;
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: payload.title,
@@ -152,22 +172,26 @@ class NotificationService {
 
   // Add notification listeners
   addNotificationReceivedListener(
-    callback: (notification: Notifications.Notification) => void
+    callback: (notification: any) => void
   ) {
+    if (!Notifications) return { remove: () => {} };
     return Notifications.addNotificationReceivedListener(callback);
   }
 
   addNotificationResponseListener(
-    callback: (response: Notifications.NotificationResponse) => void
+    callback: (response: any) => void
   ) {
+    if (!Notifications) return { remove: () => {} };
     return Notifications.addNotificationResponseReceivedListener(callback);
   }
 
   async getBadgeCount(): Promise<number> {
+    if (!Notifications) return 0;
     return await Notifications.getBadgeCountAsync();
   }
 
   async setBadgeCount(count: number): Promise<void> {
+    if (!Notifications) return;
     await Notifications.setBadgeCountAsync(count);
   }
 }
