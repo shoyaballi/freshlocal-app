@@ -142,7 +142,6 @@ export default function AdminDashboardScreen() {
 
       setWeeklyData(chartData);
     } catch (err: any) {
-      console.error('Dashboard fetch error:', err);
       setError(err.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);

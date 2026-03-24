@@ -15,20 +15,22 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Card, Button } from '@/components/ui';
 import { AnimatedTimeline } from '@/components/orders/AnimatedTimeline';
 import { useOrderSubscription } from '@/hooks/useOrderSubscription';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, fontSizes, spacing, borderRadius, shadows } from '@/constants/theme';
+import { formatTime, formatDate } from '@/lib/formatters';
 import type { OrderStatus } from '@/types';
 
 export default function OrderTrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
 
   // Real-time subscription with built-in order fetching
   const { isConnected, order, isLoading } = useOrderSubscription({
     orderId: id || null,
-    onStatusChange: (updatedOrder, previousStatus) => {
+    onStatusChange: () => {
       // Could add haptic feedback here
-      console.log(`Order status changed: ${previousStatus} → ${updatedOrder.status}`);
     },
     showNotifications: true,
   });
@@ -48,10 +50,12 @@ export default function OrderTrackingScreen() {
           onPress: async () => {
             try {
               setIsCancelling(true);
+              if (!user?.id) return;
               const { error: cancelError } = await supabase
                 .from('orders')
                 .update({ status: 'cancelled' })
                 .eq('id', id)
+                .eq('user_id', user.id)
                 .eq('status', 'pending');
 
               if (cancelError) {
@@ -79,21 +83,6 @@ export default function OrderTrackingScreen() {
       Linking.openURL(`tel:${order.vendor.phone}`);
     }
   }, [order?.vendor?.phone]);
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-  };
 
   if (isLoading) {
     return (

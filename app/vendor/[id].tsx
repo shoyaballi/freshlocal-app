@@ -114,8 +114,8 @@ export default function VendorProfileScreen() {
         };
 
         setVendor(transformed);
-      } catch (err) {
-        console.error('Failed to fetch vendor:', err);
+      } catch {
+        // Vendor fetch failed
       } finally {
         setVendorLoading(false);
       }

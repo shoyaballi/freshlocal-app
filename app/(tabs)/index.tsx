@@ -82,10 +82,7 @@ export default function TodayScreen() {
     return { meals: matchedMeals, vendors: matchedVendors };
   }, [searchQuery, isSearching, todayMealsRaw, tomorrowMealsRaw, vendors]);
 
-  // Filter today's meals by dietary filter (non-search view)
-  const todayMeals = useMemo(() => {
-    return todayMealsRaw;
-  }, [todayMealsRaw]);
+  const todayMeals = todayMealsRaw;
 
   const tomorrowMeals = tomorrowMealsRaw.slice(0, 4);
 

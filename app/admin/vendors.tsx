@@ -89,7 +89,6 @@ export default function VendorManagementScreen() {
       setPendingVendors(pending ?? []);
       setAllVendors(all ?? []);
     } catch (err: any) {
-      console.error('Vendor fetch error:', err);
       setError(err.message || 'Failed to load vendors');
     } finally {
       setLoading(false);

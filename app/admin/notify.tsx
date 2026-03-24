@@ -118,7 +118,6 @@ export default function SendNotificationScreen() {
               setSentCount(totalInserted);
               setSent(true);
             } catch (err: any) {
-              console.error('Send notification error:', err);
               Alert.alert('Error', err.message || 'Failed to send notifications');
             } finally {
               setSending(false);

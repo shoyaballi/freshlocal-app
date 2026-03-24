@@ -27,8 +27,8 @@ export function useFavourites() {
           const serverFavs = data.map((f: any) => f.vendor_id);
           useAppStore.setState({ favourites: serverFavs });
         }
-      } catch (err) {
-        console.error('Failed to sync favourites:', err);
+      } catch {
+        // Favourites sync failed
       } finally {
         setIsLoading(false);
       }
@@ -68,7 +68,6 @@ export function useFavourites() {
       } else {
         removeFavourite(vendorId);
       }
-      console.error('Failed to toggle favourite:', err);
     }
   }, [user, favourites, addFavourite, removeFavourite]);
 

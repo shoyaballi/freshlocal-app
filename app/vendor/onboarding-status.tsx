@@ -61,8 +61,8 @@ export default function OnboardingStatusScreen() {
         payoutsEnabled: vendor.stripe_payouts_enabled,
         onboardingComplete: vendor.stripe_onboarding_complete,
       });
-    } catch (error) {
-      console.error('Error fetching vendor status:', error);
+    } catch {
+      // Vendor status fetch failed
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

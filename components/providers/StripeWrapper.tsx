@@ -7,7 +7,7 @@ let StripeProvider: React.ComponentType<any> | null = null;
 try {
   StripeProvider = require('@stripe/stripe-react-native').StripeProvider;
 } catch {
-  console.warn('Stripe native SDK not available (Expo Go). Payments disabled.');
+  // Stripe native SDK not available (Expo Go) — payments disabled
 }
 
 interface StripeWrapperProps {

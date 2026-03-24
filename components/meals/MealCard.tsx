@@ -12,12 +12,14 @@ interface MealCardProps {
   fullWidth?: boolean;
 }
 
+const FULFILMENT_LABELS: Record<string, string> = {
+  collection: '📍 Collection',
+  delivery: '🚗 Delivery',
+  both: '📍 Both',
+};
+
 export function MealCard({ meal, onPress, showVendor = true, vendorName, fullWidth }: MealCardProps) {
-  const fulfilmentLabel = meal.fulfilmentType === 'collection'
-    ? '📍 Collection'
-    : meal.fulfilmentType === 'delivery'
-    ? '🚗 Delivery'
-    : '📍 Both';
+  const fulfilmentLabel = FULFILMENT_LABELS[meal.fulfilmentType] ?? '📍 Collection';
 
   const isLowStock = meal.stock <= 3 && meal.stock > 0;
   const isSoldOut = meal.stock === 0;

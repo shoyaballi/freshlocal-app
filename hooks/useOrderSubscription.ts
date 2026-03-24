@@ -93,7 +93,6 @@ export function useOrderSubscription({
       .single();
 
     if (error || !data) {
-      console.error('Failed to fetch order details:', error);
       return null;
     }
 

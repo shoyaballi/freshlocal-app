@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { colors, fonts, fontSizes, spacing } from '@/constants/theme';
+import { colors, fonts, fontSizes, spacing, shadows } from '@/constants/theme';
 
 interface HeaderProps {
   title?: string;
@@ -64,15 +64,27 @@ interface LocationHeaderProps {
 export function LocationHeader({ location, onLocationPress }: LocationHeaderProps) {
   return (
     <View style={styles.locationContainer}>
-      <View style={styles.logoContainer}>
-        <Text style={styles.logo}>FreshLocal</Text>
-        <Text style={styles.tagline}>Halal</Text>
+      {/* Top row: Logo */}
+      <View style={styles.locationTopRow}>
+        <View style={styles.logoContainer}>
+          <Text style={styles.logo}>FreshLocal</Text>
+          <Text style={styles.tagline}>Halal</Text>
+        </View>
       </View>
 
-      <Pressable onPress={onLocationPress} style={styles.locationButton}>
-        <Text style={styles.locationIcon}>📍</Text>
-        <Text style={styles.locationText}>{location}</Text>
-        <Text style={styles.chevron}>▼</Text>
+      {/* Location row */}
+      <Pressable
+        onPress={onLocationPress}
+        style={({ pressed }) => [
+          styles.locationButton,
+          pressed && styles.locationButtonPressed,
+        ]}
+      >
+        <View style={styles.locationRow}>
+          <Text style={styles.locationPin}>📍</Text>
+          <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
+          <Text style={styles.chevron}>&#9662;</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -128,33 +140,54 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // Location header
+  // Location header — Uber Eats style
   locationContainer: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     backgroundColor: colors.background,
   },
+  locationTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
   locationButton: {
+    flexDirection: 'column',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  locationButtonPressed: {
+    backgroundColor: colors.primaryPale,
+  },
+  deliverToLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.xs,
+    color: colors.accent,
+    marginBottom: 2,
+  },
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 20,
     gap: spacing.xs,
   },
-  locationIcon: {
-    fontSize: fontSizes.sm,
+  locationPin: {
+    fontSize: fontSizes.md,
   },
   locationText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSizes.sm,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.md,
     color: colors.textPrimary,
+    flex: 1,
   },
   chevron: {
-    fontSize: 8,
+    fontSize: 12,
     color: colors.textSecondary,
   },
 });

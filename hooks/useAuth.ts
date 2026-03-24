@@ -60,6 +60,7 @@ export function useAuth() {
           avatar: profile.avatar,
           postcode: profile.postcode,
           isVendor: profile.is_vendor || !!vendor,
+          role: profile.role || (!!vendor ? 'vendor' : 'customer'),
           createdAt: profile.created_at,
           updatedAt: profile.updated_at,
         };
@@ -85,8 +86,7 @@ export function useAuth() {
         .single();
 
       if (createError) {
-        console.error('Error creating profile:', createError);
-        // If profile creation fails (maybe trigger already created it), try fetching again
+        // Profile creation failed — likely trigger already created it, retry fetch
         const { data: retryProfile } = await supabase
           .from('profiles')
           .select('*')
@@ -102,6 +102,7 @@ export function useAuth() {
             avatar: retryProfile.avatar,
             postcode: retryProfile.postcode,
             isVendor: retryProfile.is_vendor,
+            role: retryProfile.role || 'customer',
             createdAt: retryProfile.created_at,
             updatedAt: retryProfile.updated_at,
           };
@@ -117,11 +118,12 @@ export function useAuth() {
         avatar: createdProfile.avatar,
         postcode: createdProfile.postcode,
         isVendor: false,
+        role: 'customer' as const,
         createdAt: createdProfile.created_at,
         updatedAt: createdProfile.updated_at,
       };
     } catch (error) {
-      console.error('Error in fetchOrCreateProfile:', error);
+      // fetchOrCreateProfile failed silently
       return null;
     }
   }, []);
@@ -144,7 +146,7 @@ export function useAuth() {
           }
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        // Auth init failed silently
       } finally {
         if (mounted) {
           setIsLoading(false);

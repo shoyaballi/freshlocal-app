@@ -64,7 +64,6 @@ class NotificationService {
     }
 
     if (!Device.isDevice) {
-      console.log('Push notifications require a physical device');
       return null;
     }
 
@@ -77,7 +76,6 @@ class NotificationService {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission not granted');
       return null;
     }
 
@@ -109,8 +107,7 @@ class NotificationService {
       }
 
       return this.expoPushToken;
-    } catch (error) {
-      console.error('Error getting push token:', error);
+    } catch {
       return null;
     }
   }
@@ -127,7 +124,7 @@ class NotificationService {
       .eq('id', userId);
 
     if (error) {
-      console.error('Failed to save push token:', error);
+      // Push token save failed — non-critical
     }
   }
 

@@ -246,8 +246,7 @@ export function AddMealSheet({
       onMealAdded();
       resetForm();
       onClose();
-    } catch (error) {
-      console.error('Error saving meal:', error);
+    } catch {
       Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'add'} meal. Please try again.`);
     } finally {
       setIsSubmitting(false);
@@ -280,8 +279,7 @@ export function AddMealSheet({
               onMealAdded();
               resetForm();
               onClose();
-            } catch (error) {
-              console.error('Error deleting meal:', error);
+            } catch {
               Alert.alert('Error', 'Failed to delete meal. It may have existing orders.');
             } finally {
               setIsDeleting(false);

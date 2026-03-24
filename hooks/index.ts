@@ -13,3 +13,5 @@ export { useStripePayment } from './useStripePayment';
 export { useReviews } from './useReviews';
 export { useFavourites } from './useFavourites';
 export { usePromoCodes } from './usePromoCodes';
+export { useLocation } from './useLocation';
+export { useResponsive } from './useResponsive';

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Card, StatusBadge, Button } from '@/components/ui';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
+import { formatTime, formatDate } from '@/lib/formatters';
 import type { Order } from '@/types';
 
 interface OrderCardProps {
@@ -19,22 +20,6 @@ export function OrderCard({
   showActions = false,
   isVendorView = false,
 }: OrderCardProps) {
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-    });
-  };
-
   return (
     <Card style={styles.card} onPress={onPress}>
       <View style={styles.header}>

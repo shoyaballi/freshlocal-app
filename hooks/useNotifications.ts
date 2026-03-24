@@ -76,7 +76,6 @@ export function useNotifications(): UseNotificationsResult {
       .limit(50);
 
     if (error) {
-      console.error('Failed to fetch notifications:', error);
       return;
     }
 

@@ -186,7 +186,6 @@ export default function AnalyticsScreen() {
         topMeals,
       });
     } catch (err: any) {
-      console.error('Analytics fetch error:', err);
       setError(err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);

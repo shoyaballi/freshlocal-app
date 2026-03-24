@@ -117,7 +117,6 @@ export default function OrderManagementScreen() {
 
       setOrders(mapped);
     } catch (err: any) {
-      console.error('Orders fetch error:', err);
       setError(err.message || 'Failed to load orders');
     } finally {
       setLoading(false);
