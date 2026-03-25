@@ -368,7 +368,7 @@ export const ONBOARDING_SCREENS = [
   {
     id: '1',
     title: 'Fresh halal meals from your neighbours',
-    description: 'Discover homemade dishes from talented local cooks in Blackburn. Authentic recipes, made with love.',
+    description: 'Discover homemade dishes from talented local cooks in your area. Authentic recipes, made with love.',
     emoji: '🍽️',
   },
   {
@@ -386,7 +386,7 @@ export const ONBOARDING_SCREENS = [
   {
     id: '4',
     title: 'Support your community',
-    description: 'Every order supports local families and keeps money in Blackburn. Eat local, support local.',
+    description: 'Every order supports local families and keeps money in your community. Eat local, support local.',
     emoji: '💚',
   },
 ];

@@ -92,6 +92,17 @@ export function generateTimeSlots(prepTimeMinutes: number): TimeSlot[] {
     current.setTime(current.getTime() + 30 * 60000);
   }
 
+  // Dev fallback: always offer at least 2 test slots so the flow is testable
+  if (__DEV__ && slots.length === 0) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(12, 0, 0, 0);
+    slots.push(
+      { value: tomorrow.toISOString(), label: '12:00', disabled: false },
+      { value: new Date(tomorrow.getTime() + 30 * 60000).toISOString(), label: '12:30', disabled: false },
+    );
+  }
+
   return slots;
 }
 

@@ -1,12 +1,22 @@
 import React from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { WebPaymentModal } from '@/components/payments/WebPaymentModal';
+
+const stripePromise = loadStripe(
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
+);
 
 interface StripeWrapperProps {
   children: React.ReactNode;
 }
 
-// Web: Stripe native SDK not supported — render children directly
 export function StripeWrapper({ children }: StripeWrapperProps) {
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <WebPaymentModal stripePromise={stripePromise} />
+    </>
+  );
 }
 
 export default StripeWrapper;

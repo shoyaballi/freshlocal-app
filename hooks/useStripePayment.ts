@@ -33,6 +33,28 @@ export function useStripePayment(): UseStripePaymentReturn {
   const stripePresent = stripe?.presentPaymentSheet;
 
   if (!stripe) {
+    // Dev test mode — simulate payment in Expo Go
+    if (__DEV__) {
+      const testOrderIdRef = { current: '' };
+      return {
+        isLoading: false,
+        error: null,
+        initializePayment: async (orderId: string) => {
+          testOrderIdRef.current = orderId;
+          console.log('[Test Mode] Payment initialised for order:', orderId);
+          return true;
+        },
+        presentPaymentSheet: async () => {
+          await supabase
+            .from('orders')
+            .update({ status: 'confirmed', payment_status: 'paid' })
+            .eq('id', testOrderIdRef.current);
+          Alert.alert('Test Mode', 'Payment simulated successfully.');
+          return { success: true };
+        },
+      };
+    }
+
     return {
       isLoading: false,
       error: null,

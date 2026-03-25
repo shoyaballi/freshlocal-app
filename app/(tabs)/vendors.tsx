@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { SearchInput, ErrorState, VendorListSkeleton } from '@/components/ui';
 import { VendorCard } from '@/components/vendors';
 import { colors, fonts, fontSizes, spacing } from '@/constants/theme';
 import { useVendors, useFavourites } from '@/hooks';
+import { supabase } from '@/lib/supabase';
 import type { Vendor } from '@/types';
 
 export default function VendorsScreen() {
@@ -23,6 +24,28 @@ export default function VendorsScreen() {
   // Fetch vendors
   const { vendors, isLoading, error, refetch } = useVendors();
   const { isFavourite, toggleFavourite } = useFavourites();
+
+  // Fetch upcoming meal counts per vendor
+  const [mealCounts, setMealCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const fetchMealCounts = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('meals')
+        .select('vendor_id')
+        .eq('is_active', true)
+        .gte('available_date', today);
+
+      if (data) {
+        const counts: Record<string, number> = {};
+        data.forEach((m: any) => {
+          counts[m.vendor_id] = (counts[m.vendor_id] || 0) + 1;
+        });
+        setMealCounts(counts);
+      }
+    };
+    fetchMealCounts();
+  }, [vendors]);
 
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
@@ -46,10 +69,9 @@ export default function VendorsScreen() {
     );
   }, [vendors, searchQuery]);
 
-  const getVendorDistance = (_vendorId: string) => {
-    // Mock distance calculation - in production, calculate from user location
-    const distances = ['0.3 mi', '0.5 mi', '0.8 mi', '1.2 mi', '1.5 mi'];
-    return distances[Math.floor(Math.random() * distances.length)];
+  const getVendorDistance = (vendor: Vendor) => {
+    // Show vendor postcode area until real geolocation is implemented
+    return vendor.postcode || 'Nearby';
   };
 
   const handleVendorPress = (vendor: Vendor) => {
@@ -100,8 +122,8 @@ export default function VendorsScreen() {
                 key={vendor.id}
                 vendor={vendor}
                 onPress={() => handleVendorPress(vendor)}
-                distance={getVendorDistance(vendor.id)}
-                upcomingMeals={0} // TODO: Fetch upcoming meal count
+                distance={getVendorDistance(vendor)}
+                upcomingMeals={mealCounts[vendor.id] || 0}
                 isFavourite={isFavourite(vendor.id)}
                 onFavouriteToggle={toggleFavourite}
               />

@@ -17,7 +17,7 @@ export function AddressStep() {
   const [label, setLabel] = useState('');
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
-  const [city, setCity] = useState('Blackburn');
+  const [city, setCity] = useState('');
   const [postcode, setPostcode] = useState('');
   const [formError, setFormError] = useState('');
 

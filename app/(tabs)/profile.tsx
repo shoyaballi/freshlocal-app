@@ -146,7 +146,7 @@ export default function ProfileScreen() {
             <View style={styles.profileInfo}>
               <Text style={styles.userName}>{user?.name || 'User'}</Text>
               <Text style={styles.userLocation}>
-                📍 {user?.postcode || 'Blackburn BB1'}
+                📍 {user?.postcode || 'Set your location'}
               </Text>
               <Text style={styles.memberSince}>Member since {memberSince}</Text>
             </View>
