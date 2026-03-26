@@ -14,8 +14,10 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Card, Button } from '@/components/ui';
 import { AnimatedTimeline } from '@/components/orders/AnimatedTimeline';
+import { ReviewSheet } from '@/components/reviews';
 import { useOrderSubscription } from '@/hooks/useOrderSubscription';
 import { useAuth } from '@/hooks/useAuth';
+import { useReviews } from '@/hooks/useReviews';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, fontSizes, spacing, borderRadius, shadows } from '@/constants/theme';
 import { formatTime, formatDate } from '@/lib/formatters';
@@ -37,6 +39,18 @@ export default function OrderTrackingScreen() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isReviewSheetVisible, setIsReviewSheetVisible] = useState(false);
+
+  // Reviews — only active when we have a vendor
+  const { hasReviewed, refetch: refetchReviews } = useReviews({
+    vendorId: order?.vendorId ?? '',
+  });
+
+  const isCompleted = order
+    ? ['delivered', 'collected'].includes(order.status)
+    : false;
+  const alreadyReviewed = order ? hasReviewed(order.id) : false;
+  const showReviewButton = isCompleted && !alreadyReviewed;
 
   const handleCancelOrder = useCallback(() => {
     Alert.alert(
@@ -293,7 +307,42 @@ export default function OrderTrackingScreen() {
             </Button>
           </Animated.View>
         )}
+
+        {/* Leave a Review — only for completed orders, not yet reviewed */}
+        {showReviewButton && (
+          <Animated.View entering={FadeInDown.delay(500)}>
+            <Button
+              onPress={() => setIsReviewSheetVisible(true)}
+              fullWidth
+              style={styles.reviewButton}
+            >
+              Leave a Review
+            </Button>
+          </Animated.View>
+        )}
+
+        {/* Already reviewed indicator */}
+        {isCompleted && alreadyReviewed && (
+          <Animated.View entering={FadeInDown.delay(500)}>
+            <View style={styles.reviewedBadge}>
+              <Text style={styles.reviewedText}>You've reviewed this order</Text>
+            </View>
+          </Animated.View>
+        )}
       </ScrollView>
+
+      {/* Review Bottom Sheet */}
+      {order.vendorId && (
+        <ReviewSheet
+          isVisible={isReviewSheetVisible}
+          orderId={order.id}
+          vendorId={order.vendorId}
+          onClose={() => setIsReviewSheetVisible(false)}
+          onReviewSubmitted={() => {
+            refetchReviews();
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -512,5 +561,22 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: colors.error,
+  },
+  reviewButton: {
+    marginTop: spacing.xl,
+    backgroundColor: colors.accent,
+  },
+  reviewedBadge: {
+    marginTop: spacing.xl,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.successPale,
+    borderRadius: borderRadius.md,
+  },
+  reviewedText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.success,
   },
 });

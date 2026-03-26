@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useScrollToTop } from '@react-navigation/native';
 import { Card, Button } from '@/components/ui';
+import { ProfileEditSheet } from '@/components/profile';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useAppStore } from '@/stores/appStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -66,6 +67,7 @@ export default function ProfileScreen() {
   useScrollToTop(scrollRef);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetchOrders();
@@ -136,22 +138,25 @@ export default function ProfileScreen() {
           />
         }
       >
-        <Card style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || '?'}
-              </Text>
+        <Pressable onPress={() => setIsEditProfileOpen(true)}>
+          <Card style={styles.profileCard}>
+            <View style={styles.profileHeader}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || '?'}
+                </Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.userName}>{user?.name || 'User'}</Text>
+                <Text style={styles.userLocation}>
+                  📍 {user?.postcode || 'Set your location'}
+                </Text>
+                <Text style={styles.memberSince}>Member since {memberSince}</Text>
+              </View>
+              <Text style={styles.editIcon}>✏️</Text>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user?.name || 'User'}</Text>
-              <Text style={styles.userLocation}>
-                📍 {user?.postcode || 'Set your location'}
-              </Text>
-              <Text style={styles.memberSince}>Member since {memberSince}</Text>
-            </View>
-          </View>
-        </Card>
+          </Card>
+        </Pressable>
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -175,7 +180,7 @@ export default function ProfileScreen() {
             emoji="📦"
             title="My Orders"
             subtitle="View order history"
-            onPress={() => console.log('My Orders')}
+            onPress={() => router.push('/orders')}
           />
           {mostRecentActiveOrder && (
             <MenuItem
@@ -197,17 +202,20 @@ export default function ProfileScreen() {
           <MenuItem
             emoji="🏠"
             title="Saved Addresses"
-            onPress={() => console.log('Addresses')}
+            subtitle="Manage delivery addresses"
+            onPress={() => setIsEditProfileOpen(true)}
           />
           <MenuItem
             emoji="💳"
             title="Payment Methods"
-            onPress={() => console.log('Payment')}
+            subtitle="Coming soon"
+            onPress={() => {}}
           />
           <MenuItem
             emoji="🥗"
             title="Dietary Preferences"
-            onPress={() => console.log('Dietary')}
+            subtitle="Set your dietary filters"
+            onPress={() => router.push('/(tabs)')}
           />
         </Card>
 
@@ -230,7 +238,7 @@ export default function ProfileScreen() {
           <MenuItem
             emoji="❓"
             title="Help & Support"
-            onPress={() => console.log('Help')}
+            onPress={() => router.push('/legal/terms')}
           />
           <MenuItem
             emoji="📄"
@@ -264,6 +272,12 @@ export default function ProfileScreen() {
           />
         </Card>
       </ScrollView>
+
+      <ProfileEditSheet
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        onProfileUpdated={() => {}}
+      />
     </SafeAreaView>
   );
 }
@@ -300,6 +314,10 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
+  },
+  editIcon: {
+    fontSize: fontSizes.lg,
+    marginLeft: spacing.sm,
   },
   userName: {
     fontFamily: fonts.bodySemiBold,

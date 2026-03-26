@@ -13,6 +13,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Card, Badge } from '@/components/ui';
 import { MealCard } from '@/components/meals';
 import { OrderBottomSheet } from '@/components/order-flow';
+import { StarRating, ReviewCard } from '@/components/reviews';
 import { useMeals } from '@/hooks';
 import { useReviews } from '@/hooks/useReviews';
 import { supabase } from '@/lib/supabase';
@@ -39,30 +40,7 @@ const TAG_LABELS: Record<FoodTag, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Render filled / empty stars for a given rating (out of 5). */
-function renderStars(rating: number): string {
-  const filled = Math.round(rating);
-  return '\u2605'.repeat(filled) + '\u2606'.repeat(5 - filled);
-}
-
-/** Return a human-friendly relative-time string. */
-function formatRelativeDate(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return 'Just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHrs = Math.floor(diffMin / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-  const diffDays = Math.floor(diffHrs / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return `${diffWeeks}w ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return `${diffMonths}mo ago`;
-  return `${Math.floor(diffMonths / 12)}y ago`;
-}
+// Helpers have been moved to shared components (StarRating, ReviewCard)
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -228,10 +206,7 @@ export default function VendorProfileScreen() {
 
           {/* Rating + review count */}
           <View style={styles.ratingRow}>
-            <Text style={styles.stars}>{renderStars(vendor.rating)}</Text>
-            <Text style={styles.ratingText}>
-              {vendor.rating.toFixed(1)}
-            </Text>
+            <StarRating rating={vendor.rating} size={fontSizes.md} showValue />
             <Text style={styles.reviewCountText}>
               ({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})
             </Text>
@@ -315,42 +290,14 @@ export default function VendorProfileScreen() {
             </View>
           ) : (
             <View style={styles.reviewsList}>
-              {reviews.map((review, index) => {
-                const userName = review.user?.name || 'Anonymous';
-                const initial = userName.charAt(0).toUpperCase();
-
-                return (
-                  <Animated.View
-                    key={review.id}
-                    entering={FadeInDown.delay(350 + index * 80).duration(350)}
-                  >
-                    <View style={styles.reviewCard}>
-                      {/* User avatar + name */}
-                      <View style={styles.reviewHeader}>
-                        <View style={styles.reviewAvatar}>
-                          <Text style={styles.reviewAvatarText}>{initial}</Text>
-                        </View>
-                        <View style={styles.reviewMeta}>
-                          <Text style={styles.reviewUserName}>{userName}</Text>
-                          <Text style={styles.reviewDate}>
-                            {formatRelativeDate(review.createdAt)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Stars */}
-                      <Text style={styles.reviewStars}>
-                        {renderStars(review.rating)}
-                      </Text>
-
-                      {/* Comment */}
-                      {review.comment ? (
-                        <Text style={styles.reviewComment}>{review.comment}</Text>
-                      ) : null}
-                    </View>
-                  </Animated.View>
-                );
-              })}
+              {reviews.map((review, index) => (
+                <Animated.View
+                  key={review.id}
+                  entering={FadeInDown.delay(350 + index * 80).duration(350)}
+                >
+                  <ReviewCard review={review} />
+                </Animated.View>
+              ))}
             </View>
           )}
         </Animated.View>
@@ -486,15 +433,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.md,
   },
-  stars: {
-    fontSize: fontSizes.md,
-    color: colors.accent,
-  },
-  ratingText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.sm,
-    color: colors.textPrimary,
-  },
   reviewCountText: {
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
@@ -574,54 +512,5 @@ const styles = StyleSheet.create({
   reviewsList: {
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
-  },
-  reviewCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  reviewAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  reviewAvatarText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.sm,
-    color: colors.primary,
-  },
-  reviewMeta: {
-    flex: 1,
-  },
-  reviewUserName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.sm,
-    color: colors.textPrimary,
-  },
-  reviewDate: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.xs,
-    color: colors.textLight,
-  },
-  reviewStars: {
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginBottom: spacing.sm,
-  },
-  reviewComment: {
-    fontFamily: fonts.body,
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
   },
 });

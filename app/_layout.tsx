@@ -81,6 +81,13 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="orders"
+        options={{
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
         name="legal"
         options={{
           presentation: 'card',
