@@ -67,19 +67,9 @@ export function ReviewStep() {
   };
 
   const handlePayment = async () => {
-    // Check authentication
+    // Check authentication — redirect straight to login
     if (!isAuthenticated || !user) {
-      Alert.alert(
-        'Sign in required',
-        'Please sign in to complete your order.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign In',
-            onPress: () => router.push('/auth/login'),
-          },
-        ]
-      );
+      router.push('/auth/login');
       return;
     }
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Button } from '@/components/ui';
 import { TimeSlotPicker, generateTimeSlots } from '../components';
 import { useOrderFlow } from '../OrderFlowContext';
@@ -32,7 +32,11 @@ export function TimeSlotStep() {
   const fulfilmentLabel = fulfilmentType === 'collection' ? 'collection' : 'delivery';
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+    >
       <Pressable onPress={handleBack} style={styles.backLink}>
         <Text style={styles.backLinkText}>← Back</Text>
       </Pressable>
@@ -58,13 +62,16 @@ export function TimeSlotStep() {
       >
         Continue
       </Button>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  content: {
+    paddingBottom: spacing['3xl'],
   },
   backLink: {
     alignSelf: 'flex-start',
@@ -89,11 +96,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   slotContainer: {
-    flex: 1,
     marginBottom: spacing.lg,
   },
   continueButton: {
-    marginTop: 'auto',
+    marginTop: spacing.lg,
   },
 });
 

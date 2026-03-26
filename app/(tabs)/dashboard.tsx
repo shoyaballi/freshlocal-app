@@ -8,12 +8,14 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout';
 import { Card, Button, StatusBadge, ErrorState, OrderListSkeleton, MealGridSkeleton } from '@/components/ui';
 import { MealCardCompact } from '@/components/meals';
-import { AddMealSheet } from '@/components/vendor';
+import { AddMealSheet, VendorProfileSheet } from '@/components/vendor';
 import { haptic } from '@/lib/haptics';
 import { colors, fonts, fontSizes, spacing, borderRadius } from '@/constants/theme';
 import { useVendorOrders, useMeals, useVendorOrderSubscription } from '@/hooks';
@@ -29,6 +31,7 @@ export default function DashboardScreen() {
   const [vendorId, setVendorId] = useState<string | null>(null);
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user } = useAuth();
 
   const [vendorLoading, setVendorLoading] = useState(true);
@@ -188,11 +191,90 @@ export default function DashboardScreen() {
 
   const handleMarkReady = async (orderId: string) => {
     haptic.medium();
-    const success = await updateOrderStatus(orderId, 'ready');
-    if (!success) {
+    try {
+      await updateOrderStatus(orderId, 'ready');
+    } catch {
       Alert.alert('Error', 'Failed to update order status');
     }
   };
+
+  // Export earnings statement
+  const handleExportStatement = useCallback(async () => {
+    // Filter to paid/completed orders only
+    const paidStatuses = ['confirmed', 'preparing', 'ready', 'collected', 'delivered'];
+    const paidOrders = orders.filter((order) => paidStatuses.includes(order.status));
+
+    if (paidOrders.length === 0) {
+      Alert.alert('No Data', 'There are no completed orders to export yet.');
+      return;
+    }
+
+    // Build CSV rows
+    const header = 'Date,Order ID,Order Total,Platform Fee (12%),Service Fee,Stripe Fee (est.),Net Payout';
+    const rows = paidOrders.map((order) => {
+      const date = new Date(order.createdAt).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+      const orderId = order.id.slice(0, 8).toUpperCase();
+      const orderTotal = order.total;
+      const platformFeeRow = orderTotal * 0.12;
+      const serviceFeeRow = order.serviceFee;
+      const stripeFeeRow = (orderTotal * 0.014) + 0.20;
+      const netPayoutRow = orderTotal - platformFeeRow - stripeFeeRow;
+
+      return `${date},${orderId},${orderTotal.toFixed(2)},${platformFeeRow.toFixed(2)},${serviceFeeRow.toFixed(2)},${stripeFeeRow.toFixed(2)},${netPayoutRow.toFixed(2)}`;
+    });
+
+    // Summary totals
+    const totalGross = paidOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalPlatformFee = totalGross * 0.12;
+    const totalServiceFee = paidOrders.reduce((sum, o) => sum + o.serviceFee, 0);
+    const totalStripeFee = paidOrders.reduce((sum, o) => sum + (o.total * 0.014) + 0.20, 0);
+    const totalNetPayout = totalGross - totalPlatformFee - totalStripeFee;
+
+    const summaryRow = `TOTALS,,${totalGross.toFixed(2)},${totalPlatformFee.toFixed(2)},${totalServiceFee.toFixed(2)},${totalStripeFee.toFixed(2)},${totalNetPayout.toFixed(2)}`;
+
+    const csvContent = [
+      `FreshLocal - Earnings Statement`,
+      `Vendor: ${vendor?.businessName || 'Unknown'}`,
+      `Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      `Orders: ${paidOrders.length}`,
+      '',
+      header,
+      ...rows,
+      '',
+      summaryRow,
+    ].join('\n');
+
+    if (Platform.OS === 'web') {
+      // Web: trigger file download
+      try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `freshlocal-statement-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch {
+        Alert.alert('Error', 'Failed to download the statement.');
+      }
+    } else {
+      // Mobile: use Share API
+      try {
+        await Share.share({
+          message: csvContent,
+          title: `FreshLocal Statement - ${new Date().toLocaleDateString('en-GB')}`,
+        });
+      } catch {
+        // User cancelled share — no action needed
+      }
+    }
+  }, [orders, vendor]);
 
   const renderOrders = () => (
     <ScrollView
@@ -359,7 +441,17 @@ export default function DashboardScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefreshEarnings} tintColor={colors.primary} />
       }
     >
-      <Text style={styles.sectionTitle}>Today's Breakdown</Text>
+      <View style={styles.earningsHeader}>
+        <Text style={styles.sectionTitle}>Today's Breakdown</Text>
+        <Button
+          size="sm"
+          variant="outline"
+          onPress={handleExportStatement}
+          disabled={orders.length === 0}
+        >
+          Export Statement
+        </Button>
+      </View>
 
       <Card style={styles.earningsCard}>
         <View style={styles.earningsRow}>
@@ -498,6 +590,8 @@ export default function DashboardScreen() {
       <Header
         title="Vendor Dashboard"
         subtitle={vendor?.businessName || 'Loading...'}
+        rightIcon={<Text style={styles.gearIcon}>&#9881;</Text>}
+        onRightPress={() => setIsProfileOpen(true)}
       />
 
       <View style={styles.tabBar}>
@@ -534,6 +628,16 @@ export default function DashboardScreen() {
           onMealDeleted={refetchMeals}
         />
       )}
+
+      {/* Vendor Profile Edit Sheet */}
+      {vendor && (
+        <VendorProfileSheet
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          vendor={vendor}
+          onProfileUpdated={fetchVendor}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -542,6 +646,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  gearIcon: {
+    fontSize: fontSizes.xl,
+    color: colors.textSecondary,
   },
   tabBar: {
     flexDirection: 'row',
@@ -698,6 +806,12 @@ const styles = StyleSheet.create({
   },
 
   // Earnings
+  earningsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   earningsCard: {
     marginBottom: spacing.xl,
   },

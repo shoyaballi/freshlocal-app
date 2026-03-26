@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from '@/components/ui';
 import { useOrderFlow } from '../OrderFlowContext';
@@ -36,7 +36,11 @@ export function ConfirmationStep({ onClose }: ConfirmationStepProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+    >
       {/* Success Icon */}
       <View style={styles.successIcon}>
         <Text style={styles.checkmark}>✓</Text>
@@ -100,15 +104,18 @@ export function ConfirmationStep({ onClose }: ConfirmationStepProps) {
           Done
         </Button>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  content: {
     alignItems: 'center',
     paddingTop: spacing['2xl'],
+    paddingBottom: spacing['3xl'],
   },
   successIcon: {
     width: 80,
@@ -194,7 +201,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     gap: spacing.md,
-    marginTop: 'auto',
+    marginTop: spacing.xl,
   },
   doneButton: {
     marginBottom: spacing.lg,

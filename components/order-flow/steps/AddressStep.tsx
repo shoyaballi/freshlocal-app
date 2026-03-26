@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   continueButton: {
-    marginTop: 'auto',
+    marginTop: spacing.lg,
   },
   form: {
     gap: spacing.sm,

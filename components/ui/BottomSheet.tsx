@@ -92,6 +92,7 @@ function MobileBottomSheet({
   const active = useSharedValue(false);
 
   const initialHeight = SCREEN_HEIGHT * snapPoints[initialSnapIndex];
+  const HANDLE_HEIGHT = 44;
 
   const scrollTo = useCallback((destination: number) => {
     'worklet';
@@ -148,12 +149,16 @@ function MobileBottomSheet({
         <Animated.View style={[mobileStyles.backdrop, rBackdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
         </Animated.View>
-        <GestureDetector gesture={gesture}>
-          <Animated.View style={[mobileStyles.sheet, rBottomSheetStyle, style]}>
-            <View style={mobileStyles.handle} />
+        <Animated.View style={[mobileStyles.sheet, rBottomSheetStyle, style]}>
+          <GestureDetector gesture={gesture}>
+            <Animated.View style={mobileStyles.handleArea}>
+              <View style={mobileStyles.handle} />
+            </Animated.View>
+          </GestureDetector>
+          <View style={{ flex: 1, maxHeight: initialHeight - HANDLE_HEIGHT }}>
             {children}
-          </Animated.View>
-        </GestureDetector>
+          </View>
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -178,14 +183,16 @@ const mobileStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     ...shadows.lg,
   },
+  handleArea: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    alignItems: 'center',
+  },
   handle: {
     width: 40,
     height: 4,
     backgroundColor: colors.grey300,
     borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
   },
 });
 

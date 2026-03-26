@@ -207,7 +207,7 @@ export function AddMealSheet({
         description: form.description.trim(),
         emoji: form.emoji,
         image_url: imageUrl,
-        price: parseFloat(form.price),
+        price: Math.round(parseFloat(form.price) * 100),
         dietary: form.dietary,
         allergens: form.allergens,
         spice_level: form.spiceLevel,
@@ -258,7 +258,7 @@ export function AddMealSheet({
 
     Alert.alert(
       'Delete Meal',
-      `Are you sure you want to delete "${meal.name}"? This cannot be undone.`,
+      `Are you sure you want to remove "${meal.name}" from your menu?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -267,20 +267,21 @@ export function AddMealSheet({
           onPress: async () => {
             setIsDeleting(true);
             try {
+              // Soft-delete: set is_active to false so order history is preserved
               const { error } = await supabase
                 .from('meals')
-                .delete()
+                .update({ is_active: false })
                 .eq('id', meal.id);
 
               if (error) throw error;
 
-              Alert.alert('Deleted', 'Meal has been removed.');
+              Alert.alert('Deleted', 'Meal has been removed from your menu.');
               onMealDeleted?.();
               onMealAdded();
               resetForm();
               onClose();
             } catch {
-              Alert.alert('Error', 'Failed to delete meal. It may have existing orders.');
+              Alert.alert('Error', 'Failed to delete meal. Please try again.');
             } finally {
               setIsDeleting(false);
             }

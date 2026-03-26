@@ -143,7 +143,9 @@ export default function VendorSignupScreen() {
           tags: selectedTags,
           phone: phone.trim(),
           postcode: postcode.trim().toUpperCase(),
-          is_active: true, // TODO: set to false for production
+          // New vendors default to inactive — requires admin approval before
+          // they become visible to customers. Admins approve via /admin/vendors.
+          is_active: false,
         })
         .select()
         .single();
@@ -151,6 +153,12 @@ export default function VendorSignupScreen() {
       if (vendorError) {
         throw new Error(vendorError.message);
       }
+
+      // Vendor created with is_active: false — admin must approve before
+      // this vendor's profile and meals are visible to customers.
+      console.log(
+        `[VendorSignup] Vendor "${businessName.trim()}" (${vendor.id}) created with is_active=false. Awaiting admin approval.`
+      );
 
       // 2. Update profile to mark as vendor
       await supabase
@@ -186,11 +194,11 @@ export default function VendorSignupScreen() {
       );
 
       if (!accountId) {
-        // Stripe account creation failed, but vendor is created
+        // Stripe account creation failed, but vendor is created (pending approval)
         // They can complete Stripe setup later
         Alert.alert(
-          'Almost done!',
-          'Your vendor account is created. Please complete payment setup from your dashboard.',
+          'Application Submitted!',
+          'Your vendor application is under review. Our team will approve it shortly. You can complete payment setup from your dashboard in the meantime.',
           [{ text: 'OK', onPress: () => router.replace('/dashboard') }]
         );
         return;

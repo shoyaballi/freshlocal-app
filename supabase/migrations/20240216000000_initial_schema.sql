@@ -76,7 +76,7 @@ CREATE TABLE vendors (
   rating DECIMAL(2, 1) NOT NULL DEFAULT 0.0 CHECK (rating >= 0 AND rating <= 5),
   review_count INTEGER NOT NULL DEFAULT 0 CHECK (review_count >= 0),
   is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_active BOOLEAN NOT NULL DEFAULT FALSE, -- New vendors require admin approval before appearing to customers
   stripe_account_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
