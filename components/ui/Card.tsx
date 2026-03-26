@@ -4,7 +4,7 @@ import { colors, borderRadius, shadows, spacing } from '@/constants/theme';
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
   onPress?: () => void;
   padding?: keyof typeof spacing | number;
   noPadding?: boolean;

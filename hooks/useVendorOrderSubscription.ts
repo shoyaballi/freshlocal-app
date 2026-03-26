@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Order, OrderItem, OrderStatus } from '@/types';
+import type { Order, OrderItem, OrderStatus, UserRole } from '@/types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface UseVendorOrderSubscriptionOptions {
@@ -45,6 +45,7 @@ function transformOrder(raw: any): Order {
           email: raw.user.email || '',
           name: raw.user.name || 'Customer',
           phone: raw.user.phone,
+          role: (raw.user.role || 'customer') as UserRole,
           isVendor: false,
           createdAt: raw.user.created_at,
           updatedAt: raw.user.updated_at || raw.user.created_at,

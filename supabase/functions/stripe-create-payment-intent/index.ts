@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { stripe } from '../_shared/stripe.ts';
 import { supabaseAdmin } from '../_shared/supabase.ts';
+import { getAuthUser } from '../_shared/auth.ts';
 
 interface RequestBody {
   orderId: string;
@@ -17,13 +18,32 @@ serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const headers = { ...getCorsHeaders(req), 'Content-Type': 'application/json' };
+
   try {
+    // --- Auth check: verify JWT and match userId ---
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: missing or invalid token' }),
+        { status: 401, headers }
+      );
+    }
+
     const { orderId, userId }: RequestBody = await req.json();
 
     if (!orderId || !userId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: orderId, userId' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
+      );
+    }
+
+    // Ensure the authenticated user matches the userId in the request
+    if (authUser.id !== userId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: user mismatch' }),
+        { status: 401, headers }
       );
     }
 
@@ -44,21 +64,21 @@ serve(async (req) => {
     if (orderError || !order) {
       return new Response(
         JSON.stringify({ error: 'Order not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
     if (!order.vendor?.stripe_account_id) {
       return new Response(
         JSON.stringify({ error: 'Vendor has not completed Stripe setup' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
     if (!order.vendor?.stripe_charges_enabled) {
       return new Response(
         JSON.stringify({ error: 'Vendor cannot accept payments yet' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -72,7 +92,7 @@ serve(async (req) => {
     if (profileError || !profile) {
       return new Response(
         JSON.stringify({ error: 'User profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
@@ -145,13 +165,13 @@ serve(async (req) => {
         customer: customerId,
         publishableKey: Deno.env.get('STRIPE_PUBLISHABLE_KEY'),
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers }
     );
   } catch (error) {
     console.error('Error creating payment intent:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

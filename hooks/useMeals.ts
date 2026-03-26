@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import type { Meal, Vendor, DietaryBadge } from '@/types';
 
 interface MealWithVendor extends Meal {
-  vendor: Vendor;
+  vendor?: Vendor;
 }
 
 interface UseMealsOptions {

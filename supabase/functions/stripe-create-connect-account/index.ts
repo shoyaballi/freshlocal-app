@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { stripe } from '../_shared/stripe.ts';
 import { supabaseAdmin } from '../_shared/supabase.ts';
+import { getAuthUser, isVendorOwner } from '../_shared/auth.ts';
 
 interface RequestBody {
   vendorId: string;
@@ -14,13 +15,33 @@ serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const headers = { ...getCorsHeaders(req), 'Content-Type': 'application/json' };
+
   try {
+    // --- Auth check: verify JWT and vendor ownership ---
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: missing or invalid token' }),
+        { status: 401, headers }
+      );
+    }
+
     const { vendorId, businessName, email }: RequestBody = await req.json();
 
     if (!vendorId || !businessName || !email) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: vendorId, businessName, email' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
+      );
+    }
+
+    // Verify the authenticated user owns this vendor
+    const ownsVendor = await isVendorOwner(authUser.id, vendorId);
+    if (!ownsVendor) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: you do not own this vendor' }),
+        { status: 401, headers }
       );
     }
 
@@ -34,7 +55,7 @@ serve(async (req) => {
     if (vendorError) {
       return new Response(
         JSON.stringify({ error: 'Vendor not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
@@ -44,7 +65,7 @@ serve(async (req) => {
           accountId: vendor.stripe_account_id,
           message: 'Vendor already has a Stripe account'
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers }
       );
     }
 
@@ -88,7 +109,7 @@ serve(async (req) => {
       await stripe.accounts.del(account.id);
       return new Response(
         JSON.stringify({ error: 'Failed to update vendor record' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers }
       );
     }
 
@@ -97,13 +118,13 @@ serve(async (req) => {
         accountId: account.id,
         message: 'Stripe account created successfully'
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers }
     );
   } catch (error) {
     console.error('Error creating Stripe account:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

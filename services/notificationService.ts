@@ -11,7 +11,7 @@ if (Platform.OS !== 'web') {
   Device = require('expo-device');
 
   // Configure notification behavior (native only)
-  Notifications.setNotificationHandler({
+  Notifications!.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,

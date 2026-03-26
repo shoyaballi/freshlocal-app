@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Order, OrderItem, User, OrderStatus } from '@/types';
 
-interface VendorOrderWithDetails extends Order {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
+interface VendorOrderWithDetails extends Omit<Order, 'user'> {
+  user?: Pick<User, 'id' | 'name' | 'phone'>;
 }
 
 interface UseVendorOrdersOptions {

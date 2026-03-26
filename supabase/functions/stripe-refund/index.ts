@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { stripe } from '../_shared/stripe.ts';
 import { supabaseAdmin } from '../_shared/supabase.ts';
+import { getAuthUser, isAdmin } from '../_shared/auth.ts';
 
 interface RequestBody {
   orderId: string;
@@ -14,13 +15,32 @@ serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const headers = { ...getCorsHeaders(req), 'Content-Type': 'application/json' };
+
   try {
+    // --- Auth check: verify JWT and admin role ---
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: missing or invalid token' }),
+        { status: 401, headers }
+      );
+    }
+
+    const userIsAdmin = await isAdmin(authUser.id);
+    if (!userIsAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorised: admin access required' }),
+        { status: 401, headers }
+      );
+    }
+
     const { orderId, reason, amount }: RequestBody = await req.json();
 
     if (!orderId) {
       return new Response(
         JSON.stringify({ error: 'Missing required field: orderId' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -34,7 +54,7 @@ serve(async (req) => {
     if (orderError || !order) {
       return new Response(
         JSON.stringify({ error: 'Order not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
@@ -42,21 +62,21 @@ serve(async (req) => {
     if (!order.stripe_payment_intent_id) {
       return new Response(
         JSON.stringify({ error: 'Order has no associated payment intent' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
     if (order.payment_status === 'refunded') {
       return new Response(
         JSON.stringify({ error: 'Order has already been refunded' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
     if (order.payment_status !== 'paid') {
       return new Response(
         JSON.stringify({ error: `Cannot refund order with payment status: ${order.payment_status}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -65,13 +85,13 @@ serve(async (req) => {
       if (amount <= 0) {
         return new Response(
           JSON.stringify({ error: 'Refund amount must be greater than zero' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers }
         );
       }
       if (amount > order.total) {
         return new Response(
           JSON.stringify({ error: 'Refund amount cannot exceed order total' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers }
         );
       }
     }
@@ -82,6 +102,7 @@ serve(async (req) => {
       metadata: {
         order_id: orderId,
         reason: reason || 'Admin refund',
+        refunded_by: authUser.id,
       },
     };
 
@@ -118,7 +139,7 @@ serve(async (req) => {
           refundId: refund.id,
           refundStatus: refund.status,
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers }
       );
     }
 
@@ -130,13 +151,13 @@ serve(async (req) => {
         refundAmount: refund.amount,
         isFullRefund,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers }
     );
   } catch (error) {
     console.error('Error processing refund:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

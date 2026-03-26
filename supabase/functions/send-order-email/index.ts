@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { supabaseAdmin } from '../_shared/supabase.ts';
 import { sendEmail } from '../_shared/email.ts';
+import { getAuthUser, isAdmin, isServiceRole } from '../_shared/auth.ts';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -417,14 +418,36 @@ serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const headers = { ...getCorsHeaders(req), 'Content-Type': 'application/json' };
+
   try {
+    // --- Auth check: must be service role (pg_net trigger) or an admin user ---
+    const serviceRole = isServiceRole(req);
+    if (!serviceRole) {
+      // Fall back to checking if caller is an authenticated admin
+      const authUser = await getAuthUser(req);
+      if (!authUser) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorised: missing or invalid token' }),
+          { status: 401, headers }
+        );
+      }
+      const userIsAdmin = await isAdmin(authUser.id);
+      if (!userIsAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorised: service role or admin access required' }),
+          { status: 401, headers }
+        );
+      }
+    }
+
     const { orderId, emailType }: RequestBody = await req.json();
 
     // Validate input
     if (!orderId || !emailType) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: orderId, emailType' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -432,7 +455,7 @@ serve(async (req) => {
     if (!validTypes.includes(emailType)) {
       return new Response(
         JSON.stringify({ error: `Invalid emailType. Must be one of: ${validTypes.join(', ')}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -452,7 +475,7 @@ serve(async (req) => {
       console.error('Error fetching order:', orderError);
       return new Response(
         JSON.stringify({ error: 'Order not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
@@ -467,14 +490,14 @@ serve(async (req) => {
       console.error('Error fetching profile:', profileError);
       return new Response(
         JSON.stringify({ error: 'User profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers }
       );
     }
 
     if (!profile.email) {
       return new Response(
         JSON.stringify({ error: 'User has no email address' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers }
       );
     }
 
@@ -519,13 +542,13 @@ serve(async (req) => {
         emailId: emailResult.id || null,
         notificationCreated: !notifError,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers }
     );
   } catch (error) {
     console.error('Error in send-order-email:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

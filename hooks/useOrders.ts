@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import type { Order, OrderItem, Vendor, OrderStatus } from '@/types';
 
 interface OrderWithDetails extends Order {
-  vendor: Vendor;
+  vendor?: Vendor;
 }
 
 interface UseOrdersOptions {
